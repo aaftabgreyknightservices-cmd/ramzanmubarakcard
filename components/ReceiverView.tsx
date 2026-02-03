@@ -40,8 +40,8 @@ const GoldenEnvelope = ({ from, onClick, isOpening }: { from: string, onClick: (
     <motion.div 
         className="relative perspective-1000 group cursor-pointer z-50" 
         onClick={onClick}
-        animate={isOpening ? { scale: 1.1, rotate: [0, -2, 2, 0] } : {}}
-        transition={{ duration: 0.5 }}
+        animate={isOpening ? { scale: [1, 1.1, 1.2], rotate: [0, -2, 2, 0] } : {}}
+        transition={{ duration: 0.8 }}
     >
       <motion.div
         initial={{ y: -100, opacity: 0, rotateX: 20 }}
@@ -51,14 +51,13 @@ const GoldenEnvelope = ({ from, onClick, isOpening }: { from: string, onClick: (
         }
         className="w-[340px] h-[240px] md:w-[450px] md:h-[320px] bg-gradient-to-br from-[#E6B800] via-[#FDD835] to-[#B38F00] rounded-lg shadow-[0_30px_60px_rgba(0,0,0,0.6)] relative flex items-center justify-center transform-gpu border-t border-white/20"
       >
-        {/* Paper Texture */}
+        {/* Envelope Paper Texture */}
         <div className="absolute inset-0 opacity-30 bg-[url('https://www.transparenttextures.com/patterns/stardust.png')] mix-blend-overlay"></div>
         
-        {/* Envelope Flap Lines */}
+        {/* Envelope Structure */}
         <div className="absolute top-0 left-0 w-full h-full z-10 pointer-events-none">
              <div className="absolute top-0 left-0 w-1/2 h-full border-r border-yellow-700/10 transform skew-x-12 origin-top-left opacity-30"></div>
              <div className="absolute top-0 right-0 w-1/2 h-full border-l border-yellow-700/10 transform -skew-x-12 origin-top-right opacity-30"></div>
-             {/* The V Flap */}
              <div className="absolute top-0 left-0 w-full h-1/2 bg-gradient-to-b from-yellow-300/40 to-yellow-600/10 clip-path-triangle backdrop-blur-sm z-20 shadow-lg"></div>
         </div>
 
@@ -72,7 +71,6 @@ const GoldenEnvelope = ({ from, onClick, isOpening }: { from: string, onClick: (
                 <div className="w-24 h-24 bg-gradient-to-br from-red-700 to-red-900 rounded-full shadow-[0_10px_25px_rgba(0,0,0,0.4)] flex items-center justify-center border-4 border-red-800/50 ring-4 ring-red-900/20">
                     <Lock className="text-yellow-100/80 drop-shadow-md" size={36} />
                 </div>
-                {/* Pulse Ring */}
                 <div className="absolute inset-0 rounded-full border-2 border-white/30 animate-ping opacity-20"></div>
             </motion.div>
             
@@ -82,7 +80,6 @@ const GoldenEnvelope = ({ from, onClick, isOpening }: { from: string, onClick: (
             </div>
         </div>
 
-        {/* Magical Glow Behind */}
         <div className="absolute -inset-20 bg-yellow-400/20 blur-[60px] -z-10 animate-pulse"></div>
       </motion.div>
       
@@ -101,8 +98,11 @@ const GoldenEnvelope = ({ from, onClick, isOpening }: { from: string, onClick: (
 };
 
 const ReceiverView: React.FC<Props> = ({ data, onCreateNew }) => {
-  // Stages: 'gift' -> 'transition' (flash) -> 'revealed'
-  const [stage, setStage] = useState<'gift' | 'transition' | 'revealed'>('gift');
+  // State for the Cinematic Sequence
+  const [isOpening, setIsOpening] = useState(false); // Envelope animation starts
+  const [flash, setFlash] = useState(false);       // White screen on
+  const [revealed, setRevealed] = useState(false); // DOM swap (Envelope -> Card)
+
   const [saidAmeen, setSaidAmeen] = useState(false);
   const [isMuted, setIsMuted] = useState(true);
   
@@ -136,43 +136,39 @@ const ReceiverView: React.FC<Props> = ({ data, onCreateNew }) => {
   };
 
   const handleOpenGift = () => {
-    // 1. Trigger Audio
+    // 1. Play Audio
     if (isMuted && audioRef.current) {
         audioRef.current.play().catch(() => {});
         setIsMuted(false);
     }
 
-    // 2. Animate Opening
-    setStage('transition');
-    
-    // 3. Confetti Explosion
-    const end = Date.now() + 1000;
-    const colors = [theme.accent, '#FFD700', '#ffffff'];
-    
-    (function frame() {
-      confetti({
-        particleCount: 5,
-        angle: 60,
-        spread: 55,
-        origin: { x: 0 },
-        colors: colors
-      });
-      confetti({
-        particleCount: 5,
-        angle: 120,
-        spread: 55,
-        origin: { x: 1 },
-        colors: colors
-      });
-      if (Date.now() < end) {
-        requestAnimationFrame(frame);
-      }
-    }());
+    // 2. Animate Envelope
+    setIsOpening(true);
 
-    // 4. Whiteout Transition to Card
+    // 3. Trigger Flashbang (Mask)
+    // Wait 600ms for envelope to shake/scale up
     setTimeout(() => {
-        setStage('revealed');
-    }, 800);
+        setFlash(true); // Screen goes white FAST
+    }, 600);
+
+    // 4. Swap Content Behind the Flash
+    setTimeout(() => {
+        setRevealed(true); // Unmount Envelope, Mount Card (hidden by flash)
+        
+        // Trigger Confetti 'Bang' behind the flash for when it fades
+        const end = Date.now() + 1000;
+        const colors = [theme.accent, '#FFD700', '#ffffff'];
+        (function frame() {
+          confetti({ particleCount: 5, angle: 60, spread: 55, origin: { x: 0 }, colors: colors });
+          confetti({ particleCount: 5, angle: 120, spread: 55, origin: { x: 1 }, colors: colors });
+          if (Date.now() < end) requestAnimationFrame(frame);
+        }());
+    }, 900);
+
+    // 5. Fade Out Flash (Reveal Card)
+    setTimeout(() => {
+        setFlash(false); // Screen fades to transparent SLOWLY
+    }, 1100);
   };
 
   const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
@@ -213,86 +209,68 @@ const ReceiverView: React.FC<Props> = ({ data, onCreateNew }) => {
         {isMuted ? <VolumeX size={20} className="text-gray-400" /> : <Volume2 size={20} className="text-yellow-400" />}
       </button>
 
-      {/* Floating Smartlink */}
       <SmartLinkButton />
 
-      {/* Background Particles (Always visible to maintain context) */}
+      {/* --- THE FLASH MASK (Prevents Blank Screen) --- */}
+      {/* 
+          Logic: 
+          - opacity-0 by default. 
+          - opacity-100 when flash=true (duration-200ms -> fast in)
+          - opacity-0 when flash=false (duration-2000ms -> slow reveal)
+      */}
+      <div 
+        className={`fixed inset-0 bg-white z-[9999] pointer-events-none transition-opacity ease-in-out ${flash ? 'opacity-100 duration-200' : 'opacity-0 duration-[2000ms]'}`} 
+      />
+
+      {/* Background Particles */}
       <div className="absolute inset-0 pointer-events-none">
          <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 mix-blend-overlay"></div>
          {[...Array(30)].map((_, i) => (
             <motion.div
               key={i}
               className="absolute w-1 h-1 bg-white rounded-full blur-[1px]"
-              style={{
-                top: `${Math.random() * 100}%`,
-                left: `${Math.random() * 100}%`,
-              }}
-              animate={{ 
-                opacity: [0, 1, 0], 
-                y: [0, -30],
-                scale: [0, 1.5, 0]
-              }}
-              transition={{ 
-                duration: 3 + Math.random() * 5, 
-                repeat: Infinity, 
-                delay: Math.random() * 5
-              }}
+              style={{ top: `${Math.random() * 100}%`, left: `${Math.random() * 100}%` }}
+              animate={{ opacity: [0, 1, 0], y: [0, -30], scale: [0, 1.5, 0] }}
+              transition={{ duration: 3 + Math.random() * 5, repeat: Infinity, delay: Math.random() * 5 }}
             />
          ))}
       </div>
 
-      <AnimatePresence mode="wait">
+      <AnimatePresence mode="popLayout">
         
         {/* STAGE 1: ENVELOPE */}
-        {(stage === 'gift' || stage === 'transition') && (
+        {!revealed && (
           <motion.div
             key="envelope-layer"
             className="fixed inset-0 z-40 flex flex-col items-center justify-center bg-black/80 backdrop-blur-xl"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }} // Fades out AFTER white flash covers it
+            exit={{ opacity: 0, transition: { duration: 0 } }} // Instant exit because flash covers it
           >
-             <motion.div 
-               animate={stage === 'transition' ? { scale: [1, 0.9, 1.5], opacity: [1, 1, 0] } : {}}
-               transition={{ duration: 0.8, times: [0, 0.3, 1] }}
-             >
-                 {stage === 'gift' && (
+             <motion.div>
+                 {!isOpening && (
                      <motion.div initial={{y: -20, opacity:0}} animate={{y:0, opacity:1}} className="text-center mb-12">
                          <h1 className="text-4xl md:text-6xl font-light tracking-[0.2em] uppercase text-white mb-2">Blessing Arrived</h1>
                          <p className="text-yellow-400 font-mono text-sm tracking-widest animate-pulse">A soul message waits for you</p>
                      </motion.div>
                  )}
-                 
-                 <GoldenEnvelope 
-                    from={data.from} 
-                    onClick={handleOpenGift} 
-                    isOpening={stage === 'transition'} 
-                 />
+                 <GoldenEnvelope from={data.from} onClick={handleOpenGift} isOpening={isOpening} />
              </motion.div>
           </motion.div>
         )}
 
         {/* STAGE 2: THE CARD (Revealed) */}
-        {stage === 'revealed' && (
+        {revealed && (
           <motion.div
             key="card-layer"
-            initial={{ opacity: 0 }}
+            initial={{ opacity: 1 }} // It's already opaque under the white mask
             animate={{ opacity: 1 }}
             className="w-full max-w-2xl z-10 flex flex-col items-center gap-8 md:gap-14 pb-20 relative"
           >
-             {/* THE WHITE FLASH OVERLAY (The Magic Trick) */}
-             <motion.div 
-                className="fixed inset-0 bg-white z-[100] pointer-events-none"
-                initial={{ opacity: 1 }}
-                animate={{ opacity: 0 }}
-                transition={{ duration: 1.5, ease: "easeOut" }}
-             />
-
-             {/* Header */}
              <motion.div 
                initial={{ y: -50, opacity: 0 }}
                animate={{ y: 0, opacity: 1 }}
-               transition={{ delay: 0.5, duration: 0.8 }}
+               transition={{ delay: 1, duration: 0.8 }}
                className="text-center space-y-4 relative z-20"
              >
                 <div className="inline-block px-4 py-1.5 rounded-full bg-white/5 border border-white/10 text-yellow-400 text-[10px] md:text-sm font-black tracking-[0.3em] uppercase backdrop-blur-xl shadow-lg">
@@ -300,36 +278,31 @@ const ReceiverView: React.FC<Props> = ({ data, onCreateNew }) => {
                 </div>
              </motion.div>
 
-             {/* THE FLOATING CARD - Identical Physics to Builder */}
+             {/* THE FLOATING CARD */}
              <motion.div
                 ref={cardRef}
-                style={{ 
-                  rotateX, 
-                  rotateY,
-                  transformStyle: "preserve-3d"
-                }}
-                initial={{ scale: 0.8, y: 50 }}
+                style={{ rotateX, rotateY, transformStyle: "preserve-3d" }}
+                initial={{ scale: 0.9, y: 50 }}
                 animate={{ scale: 1, y: 0 }}
                 transition={{ type: "spring", stiffness: 100, damping: 20, delay: 0.2 }}
                 className="w-full aspect-[3/4.6] glass rounded-[3rem] md:rounded-[4rem] p-6 md:p-12 flex flex-col justify-between items-center text-center shadow-[0_50px_100px_rgba(0,0,0,0.8)] relative transform-gpu"
              >
-                {/* 1. Background Glow & Texture */}
-                <div className="absolute inset-0 rounded-[3rem] md:rounded-[4rem] bg-gradient-to-br from-white/5 to-transparent z-0 pointer-events-none border border-white/10"></div>
-                <div className="absolute inset-0 rounded-[3rem] md:rounded-[4rem] opacity-30 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] mix-blend-overlay z-0"></div>
-
-                {/* 2. Floating Animation Container */}
+                {/* Continuous Levitation Animation */}
                 <motion.div 
-                   className="absolute inset-0 z-0"
-                   animate={{ y: [-10, 10, -10] }}
+                   className="absolute inset-0 z-0 pointer-events-none"
+                   animate={{ y: [-15, 15, -15] }}
                    transition={{ duration: 6, repeat: Infinity, ease: "easeInOut" }}
                 >
-                    {/* Calligraphy */}
                     <div className="absolute inset-0 flex items-center justify-center opacity-30">
                         <CalligraphySVG color={theme.accent} />
                     </div>
                 </motion.div>
 
-                {/* 3. Parallax Elements */}
+                {/* Card Backgrounds */}
+                <div className="absolute inset-0 rounded-[3rem] md:rounded-[4rem] bg-gradient-to-br from-white/5 to-transparent z-0 pointer-events-none border border-white/10"></div>
+                <div className="absolute inset-0 rounded-[3rem] md:rounded-[4rem] opacity-30 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] mix-blend-overlay z-0"></div>
+
+                {/* Parallax Elements */}
                 <motion.div 
                    style={{ translateZ: 60, x: useTransform(smoothX, [-0.5, 0.5], [-20, 20]) }}
                    className="absolute top-10 right-10 opacity-80 pointer-events-none z-10"
@@ -337,7 +310,7 @@ const ReceiverView: React.FC<Props> = ({ data, onCreateNew }) => {
                     <Moon size={100} className="text-yellow-400 drop-shadow-[0_0_30px_rgba(253,224,71,0.4)]" fill="currentColor" stroke="none" />
                 </motion.div>
 
-                {/* 4. Content Layer */}
+                {/* Content */}
                 <div className="relative z-20 w-full h-full flex flex-col justify-between">
                     <div className="space-y-4 mt-4">
                         <span className="text-yellow-400 font-black tracking-[0.4em] uppercase text-[10px] md:text-xs drop-shadow-md">Holy Ramzan 2026</span>
@@ -372,7 +345,6 @@ const ReceiverView: React.FC<Props> = ({ data, onCreateNew }) => {
                         )}
                     </div>
 
-                    {/* SENDER NAME - SOLID GOLD */}
                     <div className="mt-8 flex flex-col items-center">
                         <p className="text-[9px] md:text-[11px] text-gray-400 font-black uppercase tracking-[0.3em] mb-2">With Pure Heart,</p>
                         <div className="relative group/name">
@@ -388,11 +360,10 @@ const ReceiverView: React.FC<Props> = ({ data, onCreateNew }) => {
                 </div>
              </motion.div>
 
-             {/* Action Buttons */}
              <motion.div 
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 1.2 }}
+                transition={{ delay: 1.5 }}
                 className="grid grid-cols-1 sm:grid-cols-2 gap-4 w-full px-4"
              >
                   <button 
