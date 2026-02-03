@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { motion, AnimatePresence, useMotionValue, useSpring, useTransform } from 'framer-motion';
+import { motion, AnimatePresence, useMotionValue, useSpring, useTransform, useMotionTemplate } from 'framer-motion';
 import { Share2, Download, Copy, Check, Sparkles, RefreshCw, Send, Moon, Heart, ChevronLeft, ChevronRight, Shuffle, PenTool } from 'lucide-react';
 import html2canvas from 'html2canvas';
 import { CardData, CardTheme, THEMES } from '../types';
@@ -60,34 +60,64 @@ const CardBuilder: React.FC<Props> = ({ onThemeChange, activeTheme, t, lang }) =
   const [isGenerating, setIsGenerating] = useState(false);
   const [shareUrl, setShareUrl] = useState('');
   const [copied, setCopied] = useState(false);
+  const [isHovered, setIsHovered] = useState(false);
   const cardRef = useRef<HTMLDivElement>(null);
 
-  // Parallax Physics
+  // --- ADVANCED 3D PHYSICS ---
   const mouseX = useMotionValue(0);
   const mouseY = useMotionValue(0);
 
-  const springConfig = { stiffness: 100, damping: 20 };
+  // Heavier spring for premium feel
+  const springConfig = { stiffness: 300, damping: 30, mass: 0.8 };
   const smoothX = useSpring(mouseX, springConfig);
   const smoothY = useSpring(mouseY, springConfig);
 
-  const rotateX = useTransform(smoothY, [-0.5, 0.5], [8, -8]);
-  const rotateY = useTransform(smoothX, [-0.5, 0.5], [-8, 8]);
+  // Hyper-Deep Tilt Range
+  const rotateX = useTransform(smoothY, [-0.5, 0.5], [20, -20]);
+  const rotateY = useTransform(smoothX, [-0.5, 0.5], [-20, 20]);
   
-  const moonTranslateX = useTransform(smoothX, [-0.5, 0.5], [-15, 15]);
-  const moonTranslateY = useTransform(smoothY, [-0.5, 0.5], [-15, 15]);
+  // Parallax Element Movements
+  const moonTranslateX = useTransform(smoothX, [-0.5, 0.5], [-25, 25]);
+  const moonTranslateY = useTransform(smoothY, [-0.5, 0.5], [-25, 25]);
+
+  // Dynamic Shadow (Moves opposite to card for floating effect)
+  const shadowX = useTransform(smoothX, [-0.5, 0.5], [-30, 30]);
+  const shadowY = useTransform(smoothY, [-0.5, 0.5], [-30, 30]);
+  const shadowOpacity = useTransform(smoothY, [-0.5, 0.5], [0.4, 0.8]);
+  const dynamicShadow = useMotionTemplate`${shadowX}px ${shadowY}px 60px rgba(0,0,0,${shadowOpacity})`;
+
+  // Holographic Glare/Sheen
+  const glareX = useTransform(smoothX, [-0.5, 0.5], [0, 100]);
+  const glareY = useTransform(smoothY, [-0.5, 0.5], [0, 100]);
+  const sheenGradient = useMotionTemplate`radial-gradient(circle at ${glareX}% ${glareY}%, rgba(255,255,255,0.4) 0%, transparent 60%)`;
+
+  const handleMove = (x: number, y: number) => {
+      mouseX.set(x);
+      mouseY.set(y);
+      setIsHovered(true);
+  };
 
   const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
     if (!cardRef.current) return;
     const rect = cardRef.current.getBoundingClientRect();
     const x = (e.clientX - rect.left) / rect.width - 0.5;
     const y = (e.clientY - rect.top) / rect.height - 0.5;
-    mouseX.set(x);
-    mouseY.set(y);
+    handleMove(x, y);
+  };
+  
+  const handleTouchMove = (e: React.TouchEvent<HTMLDivElement>) => {
+    if (!cardRef.current) return;
+    const rect = cardRef.current.getBoundingClientRect();
+    const touch = e.touches[0];
+    const x = (touch.clientX - rect.left) / rect.width - 0.5;
+    const y = (touch.clientY - rect.top) / rect.height - 0.5;
+    handleMove(x, y);
   };
 
   const handleMouseLeave = () => {
     mouseX.set(0);
     mouseY.set(0);
+    setIsHovered(false);
   };
 
   const nextWish = () => {
@@ -355,63 +385,86 @@ const CardBuilder: React.FC<Props> = ({ onThemeChange, activeTheme, t, lang }) =
 
       {/* Advanced Preview Section */}
       <div className="lg:sticky lg:top-24 flex flex-col items-center">
-        <div className="perspective-1000 w-full max-w-[420px]" onMouseMove={handleMouseMove} onMouseLeave={handleMouseLeave}>
-          <motion.div
-            ref={cardRef}
-            style={{ rotateX, rotateY, transformStyle: "preserve-3d" }}
-            className={`aspect-[3/4.6] rounded-[2rem] md:rounded-[3.5rem] p-5 md:p-10 relative overflow-hidden shadow-[0_30px_60px_rgba(0,0,0,0.6)] transform-gpu group/card`}
-          >
-            <div className={`absolute inset-0 bg-gradient-to-br ${activeTheme.gradient} z-[-50]`}></div>
-            <div className="absolute inset-0 opacity-20 z-[-40] bg-[url('https://grainy-gradients.vercel.app/noise.svg')] mix-blend-overlay"></div>
-            <motion.div className="absolute inset-0 flex items-center justify-center z-0 pointer-events-none">
-              <CalligraphySVG color={activeTheme.accent} />
-            </motion.div>
+        {/* FLOAT ANIMATION CONTAINER */}
+        <div className="animate-float w-full flex justify-center">
+            <div 
+                className="perspective-1000 w-full max-w-[420px]" 
+                onMouseMove={handleMouseMove} 
+                onTouchMove={handleTouchMove}
+                onMouseLeave={handleMouseLeave}
+                onTouchEnd={handleMouseLeave}
+            >
+              <motion.div
+                ref={cardRef}
+                style={{ 
+                    rotateX, 
+                    rotateY, 
+                    boxShadow: dynamicShadow,
+                    transformStyle: "preserve-3d",
+                    scale: isHovered ? 1.05 : 1
+                }}
+                transition={{ scale: { duration: 0.3 } }}
+                className={`aspect-[3/4.6] rounded-[2rem] md:rounded-[3.5rem] p-5 md:p-10 relative overflow-hidden transform-gpu group/card bg-black/40 border border-white/10`}
+              >
+                {/* HOLOGRAPHIC GLARE */}
+                <motion.div 
+                    style={{ background: sheenGradient }}
+                    className="absolute inset-0 z-50 pointer-events-none mix-blend-overlay"
+                />
 
-            <motion.div style={{ translateZ: 80 }} className="relative z-30 h-full flex flex-col justify-between items-center text-center transform-gpu">
-              <div className="space-y-4">
-                <motion.div style={{ translateZ: 20 }} className="inline-block px-3 py-1 md:px-4 md:py-1.5 rounded-full bg-black/30 text-[9px] md:text-[10px] font-black text-yellow-400 tracking-[0.3em] uppercase border border-yellow-400/20 backdrop-blur-md shadow-lg">
-                  {t.builder.card.season}
-                </motion.div>
-                <motion.div style={{ translateZ: 50, color: activeTheme.accent }} className="arabic text-3xl md:text-5xl font-bold drop-shadow-[0_5px_15px_rgba(0,0,0,0.6)]">
-                  {t.builder.card.greeting}
-                </motion.div>
-              </div>
-
-              <div className="space-y-6 md:space-y-10 w-full">
-                <div className="space-y-1 md:space-y-2">
-                  <p className="text-[#9CA3AF] text-[10px] md:text-xs font-black uppercase tracking-[0.4em] drop-shadow-sm">{t.builder.card.specialFor}</p>
-                  <motion.h3 style={{ translateZ: 100, fontFamily: 'Sora, sans-serif' }} className="text-3xl sm:text-4xl md:text-6xl font-black leading-none break-words px-2 bg-gradient-to-r from-yellow-100 via-yellow-300 to-yellow-100 bg-clip-text text-transparent drop-shadow-[0_0_25px_rgba(253,224,71,0.6)]">
-                    {t.builder.card.you}
-                  </motion.h3>
-                </div>
+                <div className={`absolute inset-0 bg-gradient-to-br ${activeTheme.gradient} z-[-50]`}></div>
+                <div className="absolute inset-0 opacity-20 z-[-40] bg-[url('https://grainy-gradients.vercel.app/noise.svg')] mix-blend-overlay"></div>
                 
-                <motion.div style={{ translateZ: 40 }} className="relative px-2 md:px-8 py-2">
-                   <p className={`text-[#F9FAFB] text-xl sm:text-2xl md:text-3xl leading-relaxed drop-shadow-lg italic font-normal tracking-wide ${lang === 'ur' ? 'font-urdu' : lang === 'hi' ? 'font-hindi' : 'font-serif'}`}>
-                    "{formData.wish || "May this Ramzan bring you peace..."}"
-                   </p>
+                <motion.div className="absolute inset-0 flex items-center justify-center z-0 pointer-events-none">
+                  <CalligraphySVG color={activeTheme.accent} />
                 </motion.div>
 
-                {formData.includeBlessing && (
-                  <motion.div key={formData.blessingIndex} initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} style={{ translateZ: 30 }} className="pt-4 md:pt-8 border-t border-white/10 group/blessing">
-                    <p className="text-[10px] md:text-xs text-[#FCD34D] font-black uppercase tracking-[0.5em] mb-3 drop-shadow-[0_0_15px_rgba(252,211,77,0.5)]">{t.builder.inputs.blessingTitle}</p>
-                    <p className={`text-lg md:text-xl text-[#FEF3C7] leading-relaxed px-2 md:px-4 italic drop-shadow-md font-medium ${lang === 'ur' ? 'font-urdu' : lang === 'hi' ? 'font-hindi' : 'font-serif'}`}>
-                      "{t.blessings[formData.blessingIndex || 0]}"
-                    </p>
-                  </motion.div>
-                )}
-              </div>
+                <motion.div style={{ translateZ: 80 }} className="relative z-30 h-full flex flex-col justify-between items-center text-center transform-gpu">
+                  <div className="space-y-4">
+                    <motion.div style={{ translateZ: 20 }} className="inline-block px-3 py-1 md:px-4 md:py-1.5 rounded-full bg-black/30 text-[9px] md:text-[10px] font-black text-yellow-400 tracking-[0.3em] uppercase border border-yellow-400/20 backdrop-blur-md shadow-lg">
+                      {t.builder.card.season}
+                    </motion.div>
+                    <motion.div style={{ translateZ: 50, color: activeTheme.accent }} className="arabic text-3xl md:text-5xl font-bold drop-shadow-[0_5px_15px_rgba(0,0,0,0.6)]">
+                      {t.builder.card.greeting}
+                    </motion.div>
+                  </div>
 
-              <motion.div style={{ translateZ: 60 }} className="mt-auto pt-4 md:pt-8 flex flex-col items-center">
-                <p className="text-[8px] md:text-[10px] text-gray-400 font-black uppercase tracking-[0.2em] mb-1 drop-shadow-sm">{t.builder.card.withLove}</p>
-                <div className="relative group/name">
-                    <p className={`text-4xl md:text-6xl font-black italic tracking-wide text-[#FFD700] pb-2 relative z-10 ${lang === 'hi' ? 'font-hindi' : 'font-[Playfair_Display]'}`} style={{ textShadow: '0 4px 10px rgba(0, 0, 0, 0.5), 0 0 20px rgba(255, 215, 0, 0.6)' }}>
-                        {formData.from || "Your Name"}
-                    </p>
-                    <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-1/2 h-[2px] bg-yellow-500 blur-[2px] opacity-70"></div>
-                </div>
+                  <div className="space-y-6 md:space-y-10 w-full">
+                    <div className="space-y-1 md:space-y-2">
+                      <p className="text-[#9CA3AF] text-[10px] md:text-xs font-black uppercase tracking-[0.4em] drop-shadow-sm">{t.builder.card.specialFor}</p>
+                      <motion.h3 style={{ translateZ: 100, fontFamily: 'Sora, sans-serif' }} className="text-3xl sm:text-4xl md:text-6xl font-black leading-none break-words px-2 bg-gradient-to-r from-yellow-100 via-yellow-300 to-yellow-100 bg-clip-text text-transparent drop-shadow-[0_0_25px_rgba(253,224,71,0.6)]">
+                        {t.builder.card.you}
+                      </motion.h3>
+                    </div>
+                    
+                    <motion.div style={{ translateZ: 40 }} className="relative px-2 md:px-8 py-2">
+                       <p className={`text-[#F9FAFB] text-xl sm:text-2xl md:text-3xl leading-relaxed drop-shadow-lg italic font-normal tracking-wide ${lang === 'ur' ? 'font-urdu' : lang === 'hi' ? 'font-hindi' : 'font-serif'}`}>
+                        "{formData.wish || "May this Ramzan bring you peace..."}"
+                       </p>
+                    </motion.div>
+
+                    {formData.includeBlessing && (
+                      <motion.div key={formData.blessingIndex} initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} style={{ translateZ: 30 }} className="pt-4 md:pt-8 border-t border-white/10 group/blessing">
+                        <p className="text-[10px] md:text-xs text-[#FCD34D] font-black uppercase tracking-[0.5em] mb-3 drop-shadow-[0_0_15px_rgba(252,211,77,0.5)]">{t.builder.inputs.blessingTitle}</p>
+                        <p className={`text-lg md:text-xl text-[#FEF3C7] leading-relaxed px-2 md:px-4 italic drop-shadow-md font-medium ${lang === 'ur' ? 'font-urdu' : lang === 'hi' ? 'font-hindi' : 'font-serif'}`}>
+                          "{t.blessings[formData.blessingIndex || 0]}"
+                        </p>
+                      </motion.div>
+                    )}
+                  </div>
+
+                  <motion.div style={{ translateZ: 60 }} className="mt-auto pt-4 md:pt-8 flex flex-col items-center">
+                    <p className="text-[8px] md:text-[10px] text-gray-400 font-black uppercase tracking-[0.2em] mb-1 drop-shadow-sm">{t.builder.card.withLove}</p>
+                    <div className="relative group/name">
+                        <p className={`text-4xl md:text-6xl font-black italic tracking-wide text-[#FFD700] pb-2 relative z-10 ${lang === 'hi' ? 'font-hindi' : 'font-[Playfair_Display]'}`} style={{ textShadow: '0 4px 10px rgba(0, 0, 0, 0.5), 0 0 20px rgba(255, 215, 0, 0.6)' }}>
+                            {formData.from || "Your Name"}
+                        </p>
+                        <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-1/2 h-[2px] bg-yellow-500 blur-[2px] opacity-70"></div>
+                    </div>
+                  </motion.div>
+                </motion.div>
               </motion.div>
-            </motion.div>
-          </motion.div>
+            </div>
         </div>
         <div className="mt-8 md:mt-14 flex flex-col items-center gap-4">
           <div className="flex items-center gap-3 text-gray-400 text-xs md:text-sm font-bold bg-white/5 px-6 md:px-8 py-3 md:py-4 rounded-full border border-white/10 shadow-lg backdrop-blur-xl">
