@@ -3,7 +3,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence, useMotionValue, useSpring, useTransform, useMotionTemplate } from 'framer-motion';
 import { Share2, Download, Copy, Check, Sparkles, RefreshCw, Send, Moon, Heart, ChevronLeft, ChevronRight, Shuffle, PenTool } from 'lucide-react';
 import html2canvas from 'html2canvas';
-import { CardData, CardTheme, THEMES } from '../types';
+import { CardData, CardTheme, THEMES, compressData } from '../types';
 import { Language } from '../translations';
 import { NativeAdUnit, DisplayAdUnit } from './AdUnits';
 
@@ -154,24 +154,22 @@ const CardBuilder: React.FC<Props> = ({ onThemeChange, activeTheme, t, lang }) =
     setFormData({ ...formData, blessingIndex: random });
   };
 
-  const encodeData = (data: any) => {
-    try {
-        const json = JSON.stringify(data);
-        const uri = encodeURIComponent(json);
-        return btoa(uri).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
-    } catch (e) {
-        console.error("Encoding error", e);
-        return "";
-    }
-  };
-
   const generateLink = () => {
     setIsGenerating(true);
     setTimeout(() => {
       const payload = { ...formData, to: "You", relationship: "Friend", themeId: activeTheme.id };
-      const safeDataStr = encodeData(payload);
+      
+      // Compress Data for Short Link
+      const code = compressData(payload);
+      
+      // Personalized URL Structure: #Name.Code
+      // Sanitize name for URL (remove special chars, spaces to hyphens)
+      const cleanName = formData.from.trim().replace(/\s+/g, '-').replace(/[^a-zA-Z0-9\u0600-\u06FF\u0900-\u097F-]/g, '');
+      const personalizedHash = cleanName ? `${cleanName}.${code}` : code;
+      
       const baseUrl = window.location.origin + window.location.pathname;
-      const url = `${baseUrl}#data=${safeDataStr}`;
+      const url = `${baseUrl}#${personalizedHash}`;
+      
       setShareUrl(url);
       setIsGenerating(false);
       setTimeout(() => {
@@ -189,20 +187,65 @@ const CardBuilder: React.FC<Props> = ({ onThemeChange, activeTheme, t, lang }) =
 
   const downloadImage = async () => {
     if (!cardRef.current) return;
+    
+    // Reset 3D transforms for a flat capture
     mouseX.set(0);
     mouseY.set(0);
+
     setTimeout(async () => {
-      const canvas = await html2canvas(cardRef.current!, {
-        backgroundColor: null, 
-        scale: 3,
-        logging: false,
-        useCORS: true,
-        allowTaint: true
-      });
-      const link = document.createElement('a');
-      link.download = `NoorCard-${formData.from || 'Ramzan'}.png`;
-      link.href = canvas.toDataURL('image/png');
-      link.click();
+      try {
+        const canvas = await html2canvas(cardRef.current!, {
+          backgroundColor: null,
+          scale: 4, // High-res export
+          logging: false,
+          useCORS: true, // Crucial for any external assets
+          allowTaint: true,
+          onclone: (clonedDoc) => {
+            // --- EXPERT SANITIZATION PROTOCOL ---
+            
+            // 1. FIX "YOU" GOLDEN STRIPE OVERLAP
+            // The issue: bg-clip: text renders as a block behind text in html2canvas.
+            // The fix: Remove background-image entirely and use a solid gold color.
+            const youText = clonedDoc.querySelector('.download-target-you') as HTMLElement;
+            if (youText) {
+                // Completely strip the gradient classes and inline styles related to background
+                youText.style.backgroundImage = 'none';
+                youText.style.webkitBackgroundClip = 'initial';
+                youText.style.backgroundClip = 'initial';
+                youText.style.webkitTextFillColor = 'initial';
+                youText.classList.remove('text-transparent', 'bg-clip-text', 'bg-gradient-to-r');
+                
+                // Apply a premium gold effect using safer CSS properties
+                youText.style.color = '#FFD700'; // Pure Gold
+                youText.style.textShadow = '0 2px 10px rgba(255, 215, 0, 0.5)';
+            }
+
+            // 2. FIX NOISE TEXTURE (CORS/TAINT)
+            // The issue: External SVGs often fail to load or taint the canvas.
+            // The fix: Remove the image and replace with a safe CSS gradient.
+            const noiseLayer = clonedDoc.querySelector('.download-noise-overlay') as HTMLElement;
+            if (noiseLayer) {
+                noiseLayer.style.backgroundImage = 'none';
+                // Subtle radial gradient to keep texture without external assets
+                noiseLayer.style.background = 'radial-gradient(circle, rgba(255,255,255,0.05) 0%, transparent 80%)';
+            }
+
+            // 3. ENFORCE CONTRAST
+            // Ensure the name at the bottom pops
+            const senderName = clonedDoc.querySelector('.download-sender-name') as HTMLElement;
+            if (senderName) {
+                senderName.style.textShadow = '0 2px 15px rgba(0,0,0,0.8)';
+            }
+          }
+        });
+
+        const link = document.createElement('a');
+        link.download = `NoorCard-${formData.from || 'Ramzan'}.png`;
+        link.href = canvas.toDataURL('image/png', 1.0);
+        link.click();
+      } catch (err) {
+        console.error("Export failed", err);
+      }
     }, 100);
   };
 
@@ -404,7 +447,7 @@ const CardBuilder: React.FC<Props> = ({ onThemeChange, activeTheme, t, lang }) =
                     scale: isHovered ? 1.05 : 1
                 }}
                 transition={{ scale: { duration: 0.3 } }}
-                className={`aspect-[3/4.6] rounded-[2rem] md:rounded-[3.5rem] p-5 md:p-10 relative overflow-hidden transform-gpu group/card bg-black/40 border border-white/10`}
+                className={`aspect-[3/4.6] rounded-[2rem] md:rounded-[3.5rem] p-5 md:p-8 relative overflow-hidden transform-gpu group/card bg-black/40 border border-white/10`}
               >
                 {/* HOLOGRAPHIC GLARE */}
                 <motion.div 
@@ -413,7 +456,13 @@ const CardBuilder: React.FC<Props> = ({ onThemeChange, activeTheme, t, lang }) =
                 />
 
                 <div className={`absolute inset-0 bg-gradient-to-br ${activeTheme.gradient} z-[-50]`}></div>
-                <div className="absolute inset-0 opacity-20 z-[-40] bg-[url('https://grainy-gradients.vercel.app/noise.svg')] mix-blend-overlay"></div>
+                
+                {/* 
+                  Target class 'download-noise-overlay' added for onclone manipulation.
+                  External noise URL is notoriously buggy in html2canvas due to CORS.
+                  We handle this in downloadImage by swapping it for a safe gradient.
+                */}
+                <div className="download-noise-overlay absolute inset-0 opacity-20 z-[-40] bg-[url('https://grainy-gradients.vercel.app/noise.svg')] mix-blend-overlay"></div>
                 
                 <motion.div className="absolute inset-0 flex items-center justify-center z-0 pointer-events-none">
                   <CalligraphySVG color={activeTheme.accent} />
@@ -429,34 +478,39 @@ const CardBuilder: React.FC<Props> = ({ onThemeChange, activeTheme, t, lang }) =
                     </motion.div>
                   </div>
 
-                  <div className="space-y-6 md:space-y-10 w-full">
+                  <div className="space-y-4 md:space-y-6 w-full">
                     <div className="space-y-1 md:space-y-2">
                       <p className="text-[#9CA3AF] text-[10px] md:text-xs font-black uppercase tracking-[0.4em] drop-shadow-sm">{t.builder.card.specialFor}</p>
-                      <motion.h3 style={{ translateZ: 100, fontFamily: 'Sora, sans-serif' }} className="text-3xl sm:text-4xl md:text-6xl font-black leading-none break-words px-2 bg-gradient-to-r from-yellow-100 via-yellow-300 to-yellow-100 bg-clip-text text-transparent drop-shadow-[0_0_25px_rgba(253,224,71,0.6)]">
+                      
+                      {/* 
+                         Tagging 'download-target-you' allow us to target this element in onclone.
+                         We will remove the bg-clip property during download to prevent the "Golden Stripe" artifact.
+                      */}
+                      <motion.h3 style={{ translateZ: 100, fontFamily: 'Sora, sans-serif' }} className="download-target-you text-3xl sm:text-4xl md:text-5xl font-black leading-none break-words px-2 bg-gradient-to-r from-yellow-100 via-yellow-300 to-yellow-100 bg-clip-text text-transparent drop-shadow-[0_0_25px_rgba(253,224,71,0.6)]">
                         {t.builder.card.you}
                       </motion.h3>
                     </div>
                     
                     <motion.div style={{ translateZ: 40 }} className="relative px-2 md:px-8 py-2">
-                       <p className={`text-[#F9FAFB] text-xl sm:text-2xl md:text-3xl leading-relaxed drop-shadow-lg italic font-normal tracking-wide ${lang === 'ur' ? 'font-urdu' : lang === 'hi' ? 'font-hindi' : 'font-serif'}`}>
+                       <p className={`text-[#F9FAFB] text-lg sm:text-xl md:text-2xl leading-relaxed drop-shadow-lg italic font-normal tracking-wide ${lang === 'ur' ? 'font-urdu' : lang === 'hi' ? 'font-hindi' : 'font-serif'}`}>
                         "{formData.wish || "May this Ramzan bring you peace..."}"
                        </p>
                     </motion.div>
 
                     {formData.includeBlessing && (
-                      <motion.div key={formData.blessingIndex} initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} style={{ translateZ: 30 }} className="pt-4 md:pt-8 border-t border-white/10 group/blessing">
-                        <p className="text-[10px] md:text-xs text-[#FCD34D] font-black uppercase tracking-[0.5em] mb-3 drop-shadow-[0_0_15px_rgba(252,211,77,0.5)]">{t.builder.inputs.blessingTitle}</p>
-                        <p className={`text-lg md:text-xl text-[#FEF3C7] leading-relaxed px-2 md:px-4 italic drop-shadow-md font-medium ${lang === 'ur' ? 'font-urdu' : lang === 'hi' ? 'font-hindi' : 'font-serif'}`}>
+                      <motion.div key={formData.blessingIndex} initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} style={{ translateZ: 30 }} className="pt-4 md:pt-6 border-t border-white/10 group/blessing">
+                        <p className="text-[10px] md:text-xs text-[#FCD34D] font-black uppercase tracking-[0.5em] mb-2 drop-shadow-[0_0_15px_rgba(252,211,77,0.5)]">{t.builder.inputs.blessingTitle}</p>
+                        <p className={`text-base md:text-lg text-[#FEF3C7] leading-relaxed px-2 md:px-4 italic drop-shadow-md font-medium ${lang === 'ur' ? 'font-urdu' : lang === 'hi' ? 'font-hindi' : 'font-serif'}`}>
                           "{t.blessings[formData.blessingIndex || 0]}"
                         </p>
                       </motion.div>
                     )}
                   </div>
 
-                  <motion.div style={{ translateZ: 60 }} className="mt-auto pt-4 md:pt-8 flex flex-col items-center">
+                  <motion.div style={{ translateZ: 60 }} className="mt-auto pt-2 md:pt-4 flex flex-col items-center">
                     <p className="text-[8px] md:text-[10px] text-gray-400 font-black uppercase tracking-[0.2em] mb-1 drop-shadow-sm">{t.builder.card.withLove}</p>
                     <div className="relative group/name">
-                        <p className={`text-4xl md:text-6xl font-black italic tracking-wide text-[#FFD700] pb-2 relative z-10 ${lang === 'hi' ? 'font-hindi' : 'font-[Playfair_Display]'}`} style={{ textShadow: '0 4px 10px rgba(0, 0, 0, 0.5), 0 0 20px rgba(255, 215, 0, 0.6)' }}>
+                        <p className={`download-sender-name text-3xl md:text-5xl font-black italic tracking-wide text-[#FFD700] pb-1 relative z-10 ${lang === 'hi' ? 'font-hindi' : 'font-[Playfair_Display]'}`} style={{ textShadow: '0 4px 10px rgba(0, 0, 0, 0.5), 0 0 20px rgba(255, 215, 0, 0.6)' }}>
                             {formData.from || "Your Name"}
                         </p>
                         <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-1/2 h-[2px] bg-yellow-500 blur-[2px] opacity-70"></div>

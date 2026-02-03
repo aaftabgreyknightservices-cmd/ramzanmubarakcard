@@ -196,7 +196,7 @@ const ReceiverView: React.FC<Props> = ({ data, onCreateNew, t, lang }) => {
                 <div className="inline-block px-4 py-1.5 rounded-full bg-white/5 border border-white/10 text-yellow-400 text-[10px] md:text-sm font-black tracking-[0.3em] uppercase backdrop-blur-xl shadow-lg">{t.unlocked}</div>
              </motion.div>
 
-             <motion.div ref={cardRef} style={{ rotateX, rotateY, transformStyle: "preserve-3d" }} className="w-full aspect-[3/4.6] glass rounded-[3rem] md:rounded-[4rem] p-6 md:p-12 flex flex-col justify-between items-center text-center shadow-[0_50px_100px_rgba(0,0,0,0.8)] relative transform-gpu">
+             <motion.div ref={cardRef} style={{ rotateX, rotateY, transformStyle: "preserve-3d" }} className="w-full aspect-[3/4.6] glass rounded-[3rem] md:rounded-[4rem] p-6 md:p-10 flex flex-col justify-between items-center text-center shadow-[0_50px_100px_rgba(0,0,0,0.8)] relative transform-gpu">
                 <div className="absolute inset-0 rounded-[3rem] md:rounded-[4rem] bg-gradient-to-br from-white/5 to-transparent z-0 pointer-events-none border border-white/10"></div>
                 <div className="absolute inset-0 rounded-[3rem] md:rounded-[4rem] opacity-30 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] mix-blend-overlay z-0"></div>
                 
@@ -225,21 +225,21 @@ const ReceiverView: React.FC<Props> = ({ data, onCreateNew, t, lang }) => {
                         </motion.div>
                     </div>
 
-                    <div className="space-y-8 md:space-y-12">
+                    <div className="space-y-6 md:space-y-8">
                         <div className="space-y-2">
                              <p className="text-gray-400 text-[10px] md:text-xs font-black uppercase tracking-[0.5em]">A Special Dua For</p>
-                             <h3 style={{ color: theme.secondary }} className="text-5xl md:text-7xl font-black leading-none bg-gradient-to-r from-yellow-100 via-yellow-300 to-yellow-100 bg-clip-text text-transparent drop-shadow-[0_0_40px_rgba(253,224,71,0.6)]">You</h3>
+                             <h3 style={{ color: theme.secondary }} className="text-5xl md:text-6xl font-black leading-none bg-gradient-to-r from-yellow-100 via-yellow-300 to-yellow-100 bg-clip-text text-transparent drop-shadow-[0_0_40px_rgba(253,224,71,0.6)]">You</h3>
                         </div>
 
                         <div className="relative">
                             <Star className="absolute -top-6 left-1/2 -translate-x-1/2 text-yellow-400/50 w-6 h-6 animate-spin-slow" />
-                            <p className="text-[#F9FAFB] italic text-xl sm:text-2xl md:text-3xl leading-relaxed px-4 font-['Playfair_Display'] font-medium drop-shadow-lg">"{data.wish}"</p>
+                            <p className="text-[#F9FAFB] italic text-lg sm:text-xl md:text-2xl leading-relaxed px-4 font-['Playfair_Display'] font-medium drop-shadow-lg">"{data.wish}"</p>
                         </div>
 
                         {data.includeBlessing && (
-                           <div className="pt-8 border-t border-white/10 relative">
+                           <div className="pt-6 border-t border-white/10 relative">
                               <p className="text-[10px] md:text-xs text-[#FCD34D] font-black uppercase tracking-[0.5em] mb-4">Blessings</p>
-                              <p className="text-lg md:text-2xl text-[#FEF3C7] leading-relaxed italic font-['Playfair_Display'] font-semibold drop-shadow-[0_0_15px_rgba(255,209,102,0.3)]">"{BLESSINGS[data.blessingIndex || 0]}"</p>
+                              <p className="text-lg md:text-xl text-[#FEF3C7] leading-relaxed italic font-['Playfair_Display'] font-semibold drop-shadow-[0_0_15px_rgba(255,209,102,0.3)]">"{BLESSINGS[data.blessingIndex || 0]}"</p>
                            </div>
                         )}
                     </div>
@@ -251,7 +251,7 @@ const ReceiverView: React.FC<Props> = ({ data, onCreateNew, t, lang }) => {
                                 initial={{ y: 30, opacity: 0 }}
                                 animate={{ y: 0, opacity: 1 }}
                                 transition={{ type: "spring", stiffness: 150, damping: 10, delay: 0.7 }}
-                                className="text-4xl md:text-6xl font-['Playfair_Display'] font-black italic tracking-wide text-[#FFD700] pb-2 relative z-10" 
+                                className="text-3xl md:text-5xl font-['Playfair_Display'] font-black italic tracking-wide text-[#FFD700] pb-2 relative z-10" 
                              >
                                 <motion.span
                                     animate={{ 

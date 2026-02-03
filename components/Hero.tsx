@@ -25,7 +25,7 @@ const Hero: React.FC<Props> = ({ t, lang, setLang }) => {
 
   const languages: { code: Language; label: string }[] = [
       { code: 'en', label: 'English' },
-      { code: 'ru', label: 'Roman Urdu' },
+      { code: 'ru', label: 'Urdu' },
       { code: 'hi', label: 'हिंदी' },
       { code: 'ur', label: 'اردو' },
       { code: 'ar', label: 'العربية' },

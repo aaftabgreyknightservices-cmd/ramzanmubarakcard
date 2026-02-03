@@ -26,7 +26,7 @@ export const translations = {
     },
     builder: {
       title: "Manifest Your Blessing 🌙",
-      subtitle: "\"Words are the wings of the soul.\" Craft a digital treasure that bridges hearts across any distance.",
+      subtitle: "\"Words are the wings of the soul.\"",
       inputs: {
         fromLabel: "Sign Your Masterpiece",
         fromPlaceholder: "Type Name Here...",
@@ -110,7 +110,7 @@ export const translations = {
     },
     builder: {
       title: "اپنی برکتوں کو حقیقت بنائیں 🌙",
-      subtitle: "\"الفاظ روح کے پر ہوتے ہیں۔\" ایک ڈیجیٹل خزانہ تیار کریں جو فاصلوں کو مٹا کر دلوں کو جوڑ دے۔",
+      subtitle: "\"الفاظ روح کے پر ہوتے ہیں۔\"",
       inputs: {
         fromLabel: "اپنا نام لکھیں",
         fromPlaceholder: "نام یہاں ٹائپ کریں...",
@@ -194,7 +194,7 @@ export const translations = {
     },
     builder: {
       title: "Apni Duaaon Ko Haqeeqat Banayein 🌙",
-      subtitle: "\"Alfaaz rooh ke par hotay hain.\" Ek digital khazana tayar karein jo dilon ko jod day.",
+      subtitle: "\"Alfaaz rooh ke par hotay hain.\"",
       inputs: {
         fromLabel: "Apna Naam Likhein",
         fromPlaceholder: "Naam yahan type karein...",
@@ -244,7 +244,7 @@ export const translations = {
        "Allah aap ke rizq mein barkat aur jaan o maal mein hifazat ata karay.",
        "Is Ramzan aap ke gunah mit jayein aur nekiyan barh jayein.",
        "Allah aap ko Shab-e-Qadr ki sa'adatein naseeb farmaye.",
-       "Meri dua hai ke Eid ke chand tak aap ka daman khushiyon se bhar jaye."
+       "Meri dua hai ke Eid ke chand tak aap ka daman khushiyon se بھر jaye."
     ],
     blessings: [
         "Allah aap ke dil ke har gham ko khushi mein badal day.",
@@ -278,7 +278,7 @@ export const translations = {
     },
     builder: {
       title: "حقق بركاتك 🌙",
-      subtitle: "\"الكلمات هي أجنحة الروح.\" اصنع كنزاً رقمياً يربط القلوب عبر المسافات.",
+      subtitle: "\"الكلمات هي أجنحة الروح.\"",
       inputs: {
         fromLabel: "وقع تحفتك الفنية",
         fromPlaceholder: "اكتب الاسم هنا...",
@@ -362,7 +362,7 @@ export const translations = {
     },
     builder: {
       title: "अपनी दुआओं को हकीकत बनाएं 🌙",
-      subtitle: "\"अल्फ़ाज़ रूह के पर होते हैं।\" एक डिजिटल खज़ाना तैयार करें जो दिलों को जोड़ दे।",
+      subtitle: "\"अल्फ़ाज़ रूह के पर होते हैं।\"",
       inputs: {
         fromLabel: "अपना नाम लिखें",
         fromPlaceholder: "नाम यहाँ टाइप करें...",

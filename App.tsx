@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { CardData, CardTheme, THEMES } from './types';
+import { CardData, CardTheme, THEMES, decompressData } from './types';
 import { translations, Language } from './translations';
 
 // Components
@@ -11,22 +11,6 @@ import ReceiverView from './components/ReceiverView';
 import Footer from './components/Footer';
 import EidCountdown from './components/EidCountdown';
 import { DisplayAdUnit } from './components/AdUnits';
-
-// --- ROBUST URL DECODING HELPER ---
-const decodeData = (str: string) => {
-  try {
-      str = str.replace(/-/g, '+').replace(/_/g, '/');
-      while (str.length % 4) {
-        str += '=';
-      }
-      const uri = atob(str);
-      const json = decodeURIComponent(uri);
-      return JSON.parse(json);
-  } catch (e) {
-      console.error("Decoding error:", e);
-      return null;
-  }
-};
 
 const App: React.FC = () => {
   const [activeTheme, setActiveTheme] = useState<CardTheme>(THEMES[0]);
@@ -56,15 +40,20 @@ const App: React.FC = () => {
     const hash = window.location.hash;
     let dataParam = null;
 
-    if (hash.includes('data=')) {
-        const match = hash.match(/data=([^&]+)/);
-        if (match && match[1]) {
-            dataParam = match[1];
-        }
+    if (hash) {
+       if (hash.includes('data=')) {
+          // Legacy support
+          dataParam = hash.split('data=')[1];
+       } else if (hash.length > 2) {
+          // New Short Link Format: #Name.Code or #Code
+          // We split by '.' and take the last part, which contains the data
+          const parts = hash.substring(1).split('.');
+          dataParam = parts[parts.length - 1];
+       }
     }
 
     if (dataParam) {
-      const decoded = decodeData(dataParam);
+      const decoded = decompressData(dataParam);
       if (decoded) {
           setInitialData(decoded);
           setIsReceiverMode(true);
