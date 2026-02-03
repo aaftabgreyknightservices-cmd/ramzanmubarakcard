@@ -11,32 +11,70 @@ import Footer from './components/Footer';
 import EidCountdown from './components/EidCountdown'; // Imported Countdown
 import { DisplayAdUnit } from './components/AdUnits';
 
+// --- ROBUST URL DECODING HELPER ---
+const decodeData = (str: string) => {
+  try {
+      // Restore standard Base64 characters
+      str = str.replace(/-/g, '+').replace(/_/g, '/');
+      while (str.length % 4) {
+        str += '=';
+      }
+      const uri = atob(str);
+      const json = decodeURIComponent(uri);
+      return JSON.parse(json);
+  } catch (e) {
+      console.error("Decoding error:", e);
+      return null;
+  }
+};
+
 const App: React.FC = () => {
   const [activeTheme, setActiveTheme] = useState<CardTheme>(THEMES[0]);
   const [isReceiverMode, setIsReceiverMode] = useState(false);
   const [initialData, setInitialData] = useState<CardData | null>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const params = new URLSearchParams(window.location.hash.replace('#', '?'));
-    const dataParam = params.get('data');
+    // Robustly find 'data' param in hash, handling various router oddities
+    const hash = window.location.hash;
+    let dataParam = null;
+
+    if (hash.includes('data=')) {
+        // Extract everything after data= until the next & or end of string
+        const match = hash.match(/data=([^&]+)/);
+        if (match && match[1]) {
+            dataParam = match[1];
+        }
+    }
+
     if (dataParam) {
-      try {
-        const decoded = JSON.parse(decodeURIComponent(atob(dataParam)));
-        setInitialData(decoded);
-        setIsReceiverMode(true);
-        const theme = THEMES.find(t => t.id === decoded.themeId) || THEMES[0];
-        setActiveTheme(theme);
-      } catch (e) {
-        console.error("Failed to decode card data", e);
+      const decoded = decodeData(dataParam);
+      if (decoded) {
+          setInitialData(decoded);
+          setIsReceiverMode(true);
+          const theme = THEMES.find(t => t.id === decoded.themeId) || THEMES[0];
+          setActiveTheme(theme);
       }
     }
+    
+    // Smooth loading transition
+    setTimeout(() => setLoading(false), 500);
   }, []);
 
   const handleCreateNew = () => {
     setIsReceiverMode(false);
-    window.location.hash = '';
+    // Remove hash without scrolling
+    history.pushState("", document.title, window.location.pathname + window.location.search);
     setInitialData(null);
   };
+
+  if (loading) {
+      return (
+          <div className="min-h-screen bg-black flex items-center justify-center">
+              <div className="w-16 h-16 border-4 border-yellow-400 border-t-transparent rounded-full animate-spin"></div>
+          </div>
+      );
+  }
 
   if (isReceiverMode && initialData) {
     return <ReceiverView data={initialData} onCreateNew={handleCreateNew} />;

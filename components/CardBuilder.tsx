@@ -121,12 +121,32 @@ const CardBuilder: React.FC<Props> = ({ onThemeChange, activeTheme }) => {
     setFormData({ ...formData, blessingIndex: random });
   };
 
+  // --- ROBUST URL ENCODING HELPERS ---
+  const encodeData = (data: any) => {
+    try {
+        const json = JSON.stringify(data);
+        const uri = encodeURIComponent(json);
+        // Replace base64 unsafe chars for URL compatibility
+        return btoa(uri).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+    } catch (e) {
+        console.error("Encoding error", e);
+        return "";
+    }
+  };
+
   const generateLink = () => {
     setIsGenerating(true);
+    // Mimic processing time for effect
     setTimeout(() => {
+      // Force "to: You" to ensure the receiver experience is personal
       const payload = { ...formData, to: "You", relationship: "Friend", themeId: activeTheme.id };
-      const dataStr = btoa(encodeURIComponent(JSON.stringify(payload)));
-      const url = `${window.location.origin}${window.location.pathname}#data=${dataStr}`;
+      
+      const safeDataStr = encodeData(payload);
+      
+      // Construct robust URL
+      const baseUrl = window.location.origin + window.location.pathname;
+      const url = `${baseUrl}#data=${safeDataStr}`;
+      
       setShareUrl(url);
       setIsGenerating(false);
       
@@ -148,24 +168,23 @@ const CardBuilder: React.FC<Props> = ({ onThemeChange, activeTheme }) => {
     mouseX.set(0);
     mouseY.set(0);
     
-    // Slight delay to ensure transforms reset
     setTimeout(async () => {
       const canvas = await html2canvas(cardRef.current!, {
-        backgroundColor: null, // We handle background internally now
+        backgroundColor: null, 
         scale: 3,
         logging: false,
         useCORS: true,
         allowTaint: true
       });
       const link = document.createElement('a');
-      link.download = `NoorCard-Ramzan2026.png`;
+      link.download = `NoorCard-${formData.from || 'Ramzan'}.png`;
       link.href = canvas.toDataURL('image/png');
       link.click();
     }, 100);
   };
 
   const shareOnWhatsApp = () => {
-    const text = `Hey! 💚🌙\n\nRamzan is coming soon, and I made a special Dua card for you.\n\nThe design is stunning, and the duas inside are powerful. I wanted to share these blessings with you before Ramzan starts.\n\nTap the link to open your card:\n\n👉 ${shareUrl}\n\nLet's spread goodness together. 🤍\n#RamzanBlessings #DuaCard #ShareTheGoodness`;
+    const text = `*Ramzan Mubarak!* 🌙✨\n\nI’ve created a special heartfelt Dua card just for you. It carries my warmest prayers for your blessed month.\n\n👇 *Click to open your card:*\n${shareUrl}\n\nLet's welcome Ramzan with love and light. 🤲`;
     window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
   };
 
