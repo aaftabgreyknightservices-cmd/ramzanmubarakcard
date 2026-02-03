@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence, useMotionValue, useSpring, useTransform } from 'framer-motion';
-import { Heart, Share2, PenTool, Sparkles, Moon, Check, Volume2, VolumeX, Wind } from 'lucide-react';
+import { Heart, Share2, PenTool, Sparkles, Moon, Check, Volume2, VolumeX, Gift, Lock } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { CardData, THEMES, BLESSINGS } from '../types';
 import { NativeAdUnit, DisplayAdUnit, SmartLinkButton } from './AdUnits';
@@ -10,6 +10,8 @@ interface Props {
   data: CardData;
   onCreateNew: () => void;
 }
+
+// --- VISUAL COMPONENTS ---
 
 const CalligraphySVG = ({ color, isRevealed }: { color: string; isRevealed: boolean }) => (
   <motion.svg 
@@ -42,24 +44,68 @@ const CalligraphySVG = ({ color, isRevealed }: { color: string; isRevealed: bool
   </motion.svg>
 );
 
+const GoldenEnvelope = ({ from, onClick }: { from: string, onClick: () => void }) => {
+  return (
+    <div className="relative perspective-1000 group cursor-pointer" onClick={onClick}>
+      <motion.div
+        initial={{ rotateX: 20, rotateY: 0, y: -100, opacity: 0 }}
+        animate={{ rotateX: 0, rotateY: [0, -5, 5, 0], y: 0, opacity: 1 }}
+        transition={{ 
+          rotateY: { repeat: Infinity, duration: 6, ease: "easeInOut" },
+          y: { type: "spring", damping: 12 },
+          opacity: { duration: 1 }
+        }}
+        whileHover={{ scale: 1.05, rotateX: 5 }}
+        className="w-[320px] h-[220px] md:w-[400px] md:h-[280px] bg-gradient-to-br from-yellow-600 via-yellow-500 to-yellow-700 rounded-lg shadow-[0_20px_50px_rgba(0,0,0,0.5)] relative z-10 flex items-center justify-center transform-gpu"
+      >
+        {/* Envelope Flap Texture */}
+        <div className="absolute inset-0 opacity-20 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] mix-blend-overlay"></div>
+        
+        {/* Flap Triangles */}
+        <div className="absolute top-0 left-0 w-full h-1/2 bg-yellow-400/20 clip-path-triangle z-20 backdrop-blur-sm border-b border-white/10"></div>
+        
+        {/* Wax Seal */}
+        <div className="relative z-50 flex flex-col items-center gap-4">
+            <motion.div 
+               className="w-20 h-20 bg-red-700 rounded-full border-4 border-red-900 shadow-[0_5px_15px_rgba(0,0,0,0.5)] flex items-center justify-center relative overflow-hidden"
+               whileHover={{ scale: 1.1 }}
+               whileTap={{ scale: 0.9 }}
+            >
+                <div className="absolute inset-0 bg-gradient-to-tr from-black/20 to-transparent"></div>
+                <Lock className="text-yellow-200 opacity-80" size={32} />
+                <div className="absolute inset-0 ring-2 ring-white/20 rounded-full animate-pulse"></div>
+            </motion.div>
+            
+            <div className="text-center">
+                <p className="text-[10px] uppercase tracking-widest text-yellow-200 mb-1 opacity-80">A Gift From</p>
+                <h3 className="text-2xl font-['Playfair_Display'] font-black text-white drop-shadow-md">{from}</h3>
+            </div>
+        </div>
+
+        {/* Glow Effect */}
+        <div className="absolute -inset-10 bg-yellow-500/30 blur-3xl -z-10 animate-pulse"></div>
+      </motion.div>
+    </div>
+  );
+};
+
 const ReceiverView: React.FC<Props> = ({ data, onCreateNew }) => {
-  const [isRevealed, setIsRevealed] = useState(false);
+  // Stages: 'gift' -> 'opening' -> 'revealed'
+  const [stage, setStage] = useState<'gift' | 'opening' | 'revealed'>('gift');
   const [saidAmeen, setSaidAmeen] = useState(false);
   const [isMuted, setIsMuted] = useState(true);
-  const [step, setStep] = useState(0); 
   
   const theme = THEMES.find(t => t.id === data.themeId) || THEMES[0];
   const cardRef = useRef<HTMLDivElement>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
-  // Parallax Physics - Softened for better mobile feel
+  // Parallax Physics
   const mouseX = useMotionValue(0);
   const mouseY = useMotionValue(0);
   const springConfig = { stiffness: 100, damping: 20 };
   const smoothX = useSpring(mouseX, springConfig);
   const smoothY = useSpring(mouseY, springConfig);
 
-  // Reduced tilt range to prevent text distortion on small screens
   const rotateX = useTransform(smoothY, [-0.5, 0.5], [8, -8]);
   const rotateY = useTransform(smoothX, [-0.5, 0.5], [-8, 8]);
 
@@ -78,13 +124,21 @@ const ReceiverView: React.FC<Props> = ({ data, onCreateNew }) => {
     }
   };
 
-  const handleReveal = () => {
-    setIsRevealed(true);
-    triggerConfetti();
-  };
+  const handleOpenGift = () => {
+    setStage('opening');
+    if (isMuted && audioRef.current) {
+        audioRef.current.play().catch(() => {});
+        setIsMuted(false);
+    }
+    
+    // Sequence the reveal
+    setTimeout(() => {
+        confetti({ particleCount: 200, spread: 100, origin: { y: 0.6 }, colors: [theme.accent, '#FFD700', '#FFFFFF'], gravity: 0.8 });
+    }, 500);
 
-  const triggerConfetti = () => {
-    confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 }, colors: [theme.accent, '#FFD166', '#FFFFFF'] });
+    setTimeout(() => {
+        setStage('revealed');
+    }, 1500);
   };
 
   const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
@@ -111,14 +165,6 @@ const ReceiverView: React.FC<Props> = ({ data, onCreateNew }) => {
     });
   };
 
-  useEffect(() => {
-    if (!isRevealed) {
-      const timer1 = setTimeout(() => setStep(1), 3000);
-      const timer2 = setTimeout(() => setStep(2), 6500);
-      return () => { clearTimeout(timer1); clearTimeout(timer2); };
-    }
-  }, [isRevealed]);
-
   return (
     <div 
       className={`min-h-screen bg-gradient-to-b ${theme.gradient} text-white flex flex-col items-center justify-center p-4 md:p-6 relative overflow-hidden`}
@@ -132,17 +178,12 @@ const ReceiverView: React.FC<Props> = ({ data, onCreateNew }) => {
         {isMuted ? <VolumeX size={20} className="text-gray-400" /> : <Volume2 size={20} className="text-yellow-400" />}
       </button>
 
-      {/* Floating Smartlink Button for High CTR */}
+      {/* Floating Smartlink */}
       <SmartLinkButton />
 
-      {/* Immersive Background */}
+      {/* Immersive Particles */}
       <div className="absolute inset-0 opacity-40 pointer-events-none">
-        {[...Array(50)].map((_, i) => {
-          const moveX = Math.random() * 30 - 15;
-          const moveY = Math.random() * 30 - 15;
-          const duration = Math.random() * 5 + 5;
-          
-          return (
+        {[...Array(50)].map((_, i) => (
             <motion.div
               key={i}
               className="absolute w-1 h-1 bg-white rounded-full blur-[0.5px]"
@@ -152,123 +193,93 @@ const ReceiverView: React.FC<Props> = ({ data, onCreateNew }) => {
               }}
               animate={{ 
                 opacity: [0.1, 1, 0.1], 
-                scale: [0.8, 1.4, 0.8],
-                x: [0, moveX, 0],
-                y: [0, moveY, 0]
+                y: [0, Math.random() * -100, 0]
               }}
               transition={{ 
-                duration: duration, 
+                duration: Math.random() * 5 + 5, 
                 repeat: Infinity, 
                 delay: Math.random() * 5,
-                ease: "easeInOut"
+                ease: "linear"
               }}
             />
-          );
-        })}
+        ))}
       </div>
 
       <AnimatePresence mode="wait">
-        {!isRevealed ? (
+        
+        {/* STAGE 1 & 2: GIFT ARRIVAL & OPENING */}
+        {(stage === 'gift' || stage === 'opening') && (
           <motion.div
-            key="pre-reveal"
+            key="envelope-stage"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            exit={{ opacity: 0, scale: 0.85, filter: "blur(40px)" }}
-            className="text-center z-50 fixed inset-0 flex flex-col items-center justify-center bg-black/80 backdrop-blur-3xl p-6"
+            exit={{ opacity: 0, scale: 2, filter: "blur(20px)" }}
+            transition={{ duration: 1 }}
+            className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-black/90 backdrop-blur-xl"
           >
-            {step === 0 && (
-              <motion.div
-                initial={{ opacity: 0, scale: 0.9 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 1.1 }}
-                className="flex flex-col items-center gap-6"
-              >
-                <motion.div
-                  animate={{ scale: [1, 1.3, 1], opacity: [0.3, 0.8, 0.3] }}
-                  transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
-                  className="w-48 h-48 md:w-64 md:h-64 rounded-full bg-yellow-400/5 border border-yellow-400/20 blur-2xl absolute"
-                />
-                <motion.div
-                   animate={{ rotate: 360 }}
-                   transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
-                   className="relative"
-                >
-                  <Wind size={60} className="text-yellow-400/40" />
-                </motion.div>
-                <div className="space-y-4 relative">
-                  <h2 className="text-2xl md:text-3xl font-light tracking-[0.3em] uppercase text-gray-400">Take a breath</h2>
-                  <p className="text-xs font-bold text-yellow-400/60 uppercase tracking-widest">A gift of light is arriving...</p>
+            {stage === 'gift' ? (
+                <>
+                    <motion.div
+                        initial={{ opacity: 0, y: 30 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.5 }}
+                        className="mb-12 text-center space-y-2"
+                    >
+                        <h2 className="text-3xl md:text-5xl font-light tracking-[0.2em] uppercase text-white">Blessing Arrived</h2>
+                        <p className="text-yellow-400/80 font-mono text-xs md:text-sm animate-pulse">A soul message waits for you</p>
+                    </motion.div>
+                    
+                    <GoldenEnvelope from={data.from} onClick={handleOpenGift} />
+                    
+                    <motion.p 
+                        initial={{ opacity: 0 }} 
+                        animate={{ opacity: 1 }}
+                        transition={{ delay: 2, duration: 1 }}
+                        className="mt-12 text-gray-500 text-xs font-bold tracking-[0.3em] uppercase"
+                    >
+                        Tap the Seal to Open
+                    </motion.p>
+                </>
+            ) : (
+                <div className="relative flex items-center justify-center">
+                    <motion.div
+                        initial={{ scale: 1 }}
+                        animate={{ scale: [1, 1.5, 0], rotate: [0, 5, -5, 0] }}
+                        transition={{ duration: 1.5, ease: "easeInOut" }}
+                        className="w-[300px] h-[300px] bg-yellow-400 rounded-full blur-[100px] opacity-80"
+                    />
+                    <motion.div
+                        initial={{ scale: 0 }}
+                        animate={{ scale: 20 }}
+                        transition={{ duration: 1, delay: 0.5, ease: "circIn" }}
+                        className="absolute inset-0 bg-white rounded-full z-50"
+                    />
                 </div>
-              </motion.div>
-            )}
-
-            {step === 1 && (
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -20 }}
-                className="max-w-xl space-y-8"
-              >
-                <div className="w-24 h-24 bg-yellow-400/10 rounded-[2rem] mx-auto flex items-center justify-center border border-yellow-400/30 shadow-[0_0_80px_rgba(255,209,102,0.2)]">
-                  <Heart className="text-yellow-400 fill-yellow-400" size={40} />
-                </div>
-                <div className="space-y-4">
-                  <h1 className="text-4xl md:text-6xl font-black tracking-tighter">
-                    From <span className="text-yellow-400">{data.from}</span>
-                  </h1>
-                  <p className="text-lg md:text-2xl text-gray-300 font-medium leading-relaxed italic px-4">
-                    "I wanted to share a prayer that felt as pure as our connection."
-                  </p>
-                </div>
-              </motion.div>
-            )}
-
-            {step === 2 && (
-              <motion.div
-                initial={{ opacity: 0, scale: 0.9 }}
-                animate={{ opacity: 1, scale: 1 }}
-                className="space-y-10"
-              >
-                <h1 className="text-4xl md:text-8xl font-black mb-6 tracking-tighter leading-tight">
-                  Open your <br/> <span className="text-yellow-400 drop-shadow-[0_0_30px_rgba(255,209,102,0.4)]">Soul Message</span>
-                </h1>
-                
-                <button
-                  onClick={handleReveal}
-                  className="group relative px-12 py-8 md:px-20 md:py-10 bg-yellow-400 text-black font-black rounded-full text-2xl md:text-4xl shadow-[0_0_80px_rgba(255,209,102,0.5)] active:scale-95 transition-all overflow-hidden"
-                >
-                  <span className="relative z-10 flex items-center gap-4">
-                     Receive Noor <Sparkles size={30} />
-                  </span>
-                  <div className="absolute inset-0 bg-white/50 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700"></div>
-                </button>
-                
-                <p className="text-gray-500 font-bold uppercase tracking-[0.4em] text-xs animate-pulse">
-                  Click to reveal the blessings
-                </p>
-              </motion.div>
             )}
           </motion.div>
-        ) : (
+        )}
+
+        {/* STAGE 3: THE REVEALED CARD */}
+        {stage === 'revealed' && (
           <motion.div
             key="revealed"
-            initial={{ opacity: 0, y: 80, scale: 0.9 }}
+            initial={{ opacity: 0, y: 50, scale: 0.8 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
+            transition={{ type: "spring", bounce: 0.4, duration: 1.5 }}
             className="w-full max-w-2xl z-10 flex flex-col items-center gap-8 md:gap-14 pb-20"
           >
             <div className="text-center space-y-4">
               <motion.div
-                initial={{ opacity: 0, y: -30 }}
+                initial={{ opacity: 0, y: -20 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.6 }}
+                transition={{ delay: 0.5 }}
                 className="inline-block px-4 py-1.5 rounded-full bg-white/5 border border-white/10 text-yellow-400 text-[10px] md:text-sm font-black tracking-[0.3em] uppercase backdrop-blur-xl"
               >
-                A Gift of Dua from {data.from}
+                Holy Gift Unlocked
               </motion.div>
-              <h2 className="text-3xl md:text-6xl font-black text-white drop-shadow-2xl leading-tight">A Soulful Dua For You 🌙</h2>
             </div>
 
-            {/* The Cinematic Refined Card - Responsive Optimized */}
+            {/* --- THE HYPER REALISTIC CARD --- */}
             <motion.div
               ref={cardRef}
               style={{ 
@@ -278,7 +289,7 @@ const ReceiverView: React.FC<Props> = ({ data, onCreateNew }) => {
               }}
               className="w-full aspect-[3/4.6] glass rounded-[3rem] md:rounded-[4rem] p-6 md:p-12 flex flex-col justify-between items-center text-center shadow-[0_40px_80px_rgba(0,0,0,0.85)] relative transform-gpu"
             >
-                {/* Calligraphy Depth Layer */}
+                {/* 1. Calligraphy Depth Layer */}
                 <motion.div
                   style={{
                     x: useTransform(smoothX, [-0.5, 0.5], [-35, 35]),
@@ -287,10 +298,10 @@ const ReceiverView: React.FC<Props> = ({ data, onCreateNew }) => {
                   }}
                   className="absolute inset-0 flex items-center justify-center pointer-events-none"
                 >
-                  <CalligraphySVG color={theme.accent} isRevealed={isRevealed} />
+                  <CalligraphySVG color={theme.accent} isRevealed={true} />
                 </motion.div>
 
-                {/* Internal Parallax Moon */}
+                {/* 2. Internal Parallax Moon */}
                 <motion.div 
                    style={{ 
                      x: useTransform(smoothX, [-0.5, 0.5], [-25, 25]),
@@ -302,7 +313,7 @@ const ReceiverView: React.FC<Props> = ({ data, onCreateNew }) => {
                   <Moon size={80} className="md:w-[150px] md:h-[150px]" fill={theme.accent} stroke="none" />
                 </motion.div>
 
-                {/* Header Parallax */}
+                {/* 3. Header Parallax */}
                 <motion.div 
                   style={{ translateZ: 40 }}
                   className="relative z-10 space-y-2 md:space-y-4"
@@ -311,20 +322,20 @@ const ReceiverView: React.FC<Props> = ({ data, onCreateNew }) => {
                   <div className="arabic text-3xl md:text-6xl font-bold mt-2 drop-shadow-2xl" style={{ color: theme.accent }}>رمضان مبارك</div>
                 </motion.div>
 
-                {/* Core Message with Heavy Parallax */}
+                {/* 4. Core Message */}
                 <div className="relative z-10 space-y-6 md:space-y-12 w-full transform-gpu">
                   <motion.div 
                     style={{ translateZ: 80 }}
                     className="space-y-1 md:space-y-2"
                   >
-                    <p className="text-gray-400 text-[10px] md:text-xs font-black uppercase tracking-[0.5em] drop-shadow-sm">Beloved</p>
+                    <p className="text-gray-400 text-[10px] md:text-xs font-black uppercase tracking-[0.5em] drop-shadow-sm">A Special Dua For</p>
                     
-                    {/* HYPER AMAZING RECEIVER HIGHLIGHT */}
+                    {/* Receiver Highlight */}
                     <motion.h3 
                        style={{ color: theme.secondary }}
                        className="text-4xl sm:text-5xl md:text-7xl font-black leading-none break-words px-2 bg-gradient-to-r from-yellow-100 via-yellow-300 to-yellow-100 bg-clip-text text-transparent drop-shadow-[0_0_35px_rgba(253,224,71,0.5)]"
                     >
-                      Soul
+                      You
                     </motion.h3>
                   </motion.div>
                   
@@ -332,7 +343,7 @@ const ReceiverView: React.FC<Props> = ({ data, onCreateNew }) => {
                     style={{ translateZ: 50 }}
                     className="relative"
                   >
-                    {/* IMPROVED WISH FONT */}
+                    {/* WISH FONT */}
                     <p className="text-[#F9FAFB] italic text-xl sm:text-2xl md:text-4xl leading-relaxed px-2 md:px-6 drop-shadow-2xl font-['Playfair_Display'] font-medium">
                       "{data.wish}"
                     </p>
@@ -346,12 +357,10 @@ const ReceiverView: React.FC<Props> = ({ data, onCreateNew }) => {
                       style={{ translateZ: 100 }}
                       className="pt-6 md:pt-10 border-t border-white/10 relative"
                     >
-                      {/* AUTHENTIC REMOVED -> JUST BLESSING HIGHLIGHTED */}
                       <p className="text-[10px] md:text-xs text-[#FCD34D] font-black uppercase tracking-[0.5em] mb-4 md:mb-6 drop-shadow-[0_0_15px_rgba(250,204,21,0.4)]">Blessings</p>
                       
                       <div className="relative group/dua">
                         <div className="absolute -inset-2 bg-yellow-400/20 blur-xl opacity-0 group-hover/dua:opacity-100 transition duration-1000"></div>
-                        {/* IMPROVED BLESSING FONT - PLAYFAIR DISPLAY */}
                         <p className="relative text-xl sm:text-2xl md:text-3xl text-[#FEF3C7] leading-relaxed px-2 md:px-8 italic drop-shadow-[0_0_20px_rgba(255,209,102,0.4)] font-['Playfair_Display'] font-semibold">
                           "{BLESSINGS[data.blessingIndex || 0]}"
                         </p>
@@ -380,14 +389,14 @@ const ReceiverView: React.FC<Props> = ({ data, onCreateNew }) => {
                   )}
                 </div>
 
-                {/* Footer Parallax */}
+                {/* 5. Footer Parallax with Sender Name */}
                 <motion.div 
                    style={{ translateZ: 60 }}
                    className="relative z-10 mt-auto flex flex-col items-center"
                 >
                   <p className="text-[9px] md:text-[11px] text-gray-400 font-black uppercase tracking-[0.3em] mb-2 drop-shadow-sm">With Pure Heart,</p>
                   
-                  {/* SOLID GOLD CARD NAME STYLE - EXPERT FIX */}
+                  {/* SOLID GOLD SENDER NAME - IDENTICAL TO BUILDER */}
                   <div className="relative group/name">
                     <p 
                        className="text-4xl md:text-6xl font-['Playfair_Display'] font-black italic tracking-wide text-[#FFD700] pb-2 relative z-10"
@@ -395,12 +404,10 @@ const ReceiverView: React.FC<Props> = ({ data, onCreateNew }) => {
                     >
                         {data.from}
                     </p>
-                    {/* Subtle underline glow */}
                     <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-1/2 h-[2px] bg-yellow-500 blur-[2px] opacity-70"></div>
                   </div>
                 </motion.div>
 
-                {/* Card Glow Layer */}
                 <motion.div 
                   className="absolute inset-0 -z-10 blur-[120px] opacity-30 pointer-events-none"
                   animate={{ scale: [1, 1.3, 1] }}
@@ -409,12 +416,10 @@ const ReceiverView: React.FC<Props> = ({ data, onCreateNew }) => {
                 ></motion.div>
             </motion.div>
             
-            {/* NATIVE AD PLACEMENT: Highly visible after card reveal */}
             <div className="w-full -mt-6 z-20">
               <NativeAdUnit />
             </div>
 
-            {/* Immersive Action Bar */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-8 w-full px-2 md:px-4 transform-gpu">
               <button 
                 onClick={onCreateNew}
@@ -435,7 +440,6 @@ const ReceiverView: React.FC<Props> = ({ data, onCreateNew }) => {
               </button>
             </div>
             
-            {/* DISPLAY AD: Catch exit intent */}
             <DisplayAdUnit size="medium" />
 
             <motion.p 
@@ -450,13 +454,8 @@ const ReceiverView: React.FC<Props> = ({ data, onCreateNew }) => {
         )}
       </AnimatePresence>
       <style>{`
-        @keyframes shine {
-            to {
-                background-position: 200% center;
-            }
-        }
-        .animate-shine {
-            animation: shine 4s linear infinite;
+        .clip-path-triangle {
+            clip-path: polygon(0 0, 50% 100%, 100% 0);
         }
       `}</style>
     </div>
