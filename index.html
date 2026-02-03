@@ -8,15 +8,13 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Noto+Naskh+Arabic:wght@600&family=Sora:wght@600;700;800&family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400;1,600&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Noto+Naskh+Arabic:wght@400;600;700&family=Noto+Nastaliq+Urdu:wght@400;700&family=Noto+Sans+Devanagari:wght@400;600;700&family=Sora:wght@600;700;800&family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400;1,600&display=swap" rel="stylesheet">
     
-    <!-- ADSTERRA POPUNDER SCRIPT (PLACEHOLDER) -->
-    <!-- Put your Popunder script here. It will trigger on the first click. -->
-    <!-- <script type='text/javascript' src='//pl12345678.highcpmgate.com/ab/cd/ef/abcdef123456.js'></script> -->
-
-    <!-- ADSTERRA SOCIAL BAR SCRIPT (PLACEHOLDER) -->
-    <!-- Put your Social Bar script here. It will float over the content. -->
-    <!-- <script type='text/javascript' src='//pl87654321.highcpmgate.com/gh/ij/kl/ghijkl654321.js'></script> -->
+    <!-- ADSTERRA SOCIAL BAR SCRIPT ZONE -->
+    <!-- Paste your Adsterra Social Bar script here. It usually looks like: <script type='text/javascript' src='//pl12345678.com/...'></script> -->
+    
+    <!-- ADSTERRA POPUNDER SCRIPT ZONE -->
+    <!-- Paste your Adsterra Popunder script here. -->
 
     <style>
         body {
@@ -35,6 +33,13 @@
         }
         .arabic {
             font-family: 'Noto Naskh Arabic', serif;
+        }
+        .urdu {
+            font-family: 'Noto Nastaliq Urdu', serif;
+            line-height: 1.8;
+        }
+        .hindi {
+            font-family: 'Noto Sans Devanagari', sans-serif;
         }
         /* Hide scrollbar for Chrome, Safari and Opera */
         ::-webkit-scrollbar {
@@ -65,7 +70,7 @@
         .perspective-1000 {
             perspective: 1000px;
         }
-        /* Ad Container Utilities to prevent CLS */
+        /* Ad Container Utilities */
         .ad-container {
             min-height: 250px;
             display: flex;
@@ -75,9 +80,6 @@
             border-radius: 12px;
             margin: 20px 0;
             overflow: hidden;
-        }
-        .ad-native {
-            min-height: 100px;
         }
     </style>
 <script type="importmap">

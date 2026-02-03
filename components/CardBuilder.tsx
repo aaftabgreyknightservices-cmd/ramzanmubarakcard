@@ -3,12 +3,15 @@ import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence, useMotionValue, useSpring, useTransform } from 'framer-motion';
 import { Share2, Download, Copy, Check, Sparkles, RefreshCw, Send, Moon, Heart, ChevronLeft, ChevronRight, Shuffle, PenTool } from 'lucide-react';
 import html2canvas from 'html2canvas';
-import { CardData, CardTheme, THEMES, BLESSINGS, PRESET_WISHES } from '../types';
+import { CardData, CardTheme, THEMES } from '../types';
+import { Language } from '../translations';
 import { NativeAdUnit, DisplayAdUnit } from './AdUnits';
 
 interface Props {
   onThemeChange: (theme: CardTheme) => void;
   activeTheme: CardTheme;
+  t: any;
+  lang: Language;
 }
 
 const CalligraphySVG = ({ color }: { color: string }) => (
@@ -33,17 +36,25 @@ const CalligraphySVG = ({ color }: { color: string }) => (
   </motion.svg>
 );
 
-const CardBuilder: React.FC<Props> = ({ onThemeChange, activeTheme }) => {
+const CardBuilder: React.FC<Props> = ({ onThemeChange, activeTheme, t, lang }) => {
   const [formData, setFormData] = useState<CardData>({
     from: '',
     to: 'You', 
     relationship: 'Friend', 
-    wish: PRESET_WISHES[0],
+    wish: t.wishes[0],
     themeId: THEMES[0].id,
     includeBlessing: true,
     addSurprise: false,
     blessingIndex: 0
   });
+
+  // Update default wish when language changes
+  useEffect(() => {
+    setFormData(prev => ({
+        ...prev,
+        wish: t.wishes[0]
+    }));
+  }, [lang]);
 
   const [wishIndex, setWishIndex] = useState(0);
   const [isGenerating, setIsGenerating] = useState(false);
@@ -51,7 +62,7 @@ const CardBuilder: React.FC<Props> = ({ onThemeChange, activeTheme }) => {
   const [copied, setCopied] = useState(false);
   const cardRef = useRef<HTMLDivElement>(null);
 
-  // Advanced Mouse Parallax Physics
+  // Parallax Physics
   const mouseX = useMotionValue(0);
   const mouseY = useMotionValue(0);
 
@@ -64,12 +75,6 @@ const CardBuilder: React.FC<Props> = ({ onThemeChange, activeTheme }) => {
   
   const moonTranslateX = useTransform(smoothX, [-0.5, 0.5], [-15, 15]);
   const moonTranslateY = useTransform(smoothY, [-0.5, 0.5], [-15, 15]);
-  
-  const calliTranslateX = useTransform(smoothX, [-0.5, 0.5], [-30, 30]);
-  const calliTranslateY = useTransform(smoothY, [-0.5, 0.5], [-30, 30]);
-
-  const textTranslateX = useTransform(smoothX, [-0.5, 0.5], [8, -8]);
-  const textTranslateY = useTransform(smoothY, [-0.5, 0.5], [8, -8]);
 
   const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
     if (!cardRef.current) return;
@@ -85,48 +90,44 @@ const CardBuilder: React.FC<Props> = ({ onThemeChange, activeTheme }) => {
     mouseY.set(0);
   };
 
-  // --- WISH CYCLING LOGIC ---
   const nextWish = () => {
-    const next = (wishIndex + 1) % PRESET_WISHES.length;
+    const next = (wishIndex + 1) % t.wishes.length;
     setWishIndex(next);
-    setFormData({ ...formData, wish: PRESET_WISHES[next] });
+    setFormData({ ...formData, wish: t.wishes[next] });
   };
 
   const prevWish = () => {
-    const prev = (wishIndex - 1 + PRESET_WISHES.length) % PRESET_WISHES.length;
+    const prev = (wishIndex - 1 + t.wishes.length) % t.wishes.length;
     setWishIndex(prev);
-    setFormData({ ...formData, wish: PRESET_WISHES[prev] });
+    setFormData({ ...formData, wish: t.wishes[prev] });
   };
 
   const shuffleWish = () => {
-    const random = Math.floor(Math.random() * PRESET_WISHES.length);
+    const random = Math.floor(Math.random() * t.wishes.length);
     setWishIndex(random);
-    setFormData({ ...formData, wish: PRESET_WISHES[random] });
+    setFormData({ ...formData, wish: t.wishes[random] });
   };
 
-  // --- BLESSING CYCLING LOGIC ---
   const nextBlessing = () => {
-    const next = ((formData.blessingIndex || 0) + 1) % BLESSINGS.length;
+    const next = ((formData.blessingIndex || 0) + 1) % t.blessings.length;
     setFormData({ ...formData, blessingIndex: next });
   };
 
   const prevBlessing = () => {
     const current = formData.blessingIndex || 0;
-    const prev = (current - 1 + BLESSINGS.length) % BLESSINGS.length;
+    const prev = (current - 1 + t.blessings.length) % t.blessings.length;
     setFormData({ ...formData, blessingIndex: prev });
   };
   
   const shuffleBlessing = () => {
-    const random = Math.floor(Math.random() * BLESSINGS.length);
+    const random = Math.floor(Math.random() * t.blessings.length);
     setFormData({ ...formData, blessingIndex: random });
   };
 
-  // --- ROBUST URL ENCODING HELPERS ---
   const encodeData = (data: any) => {
     try {
         const json = JSON.stringify(data);
         const uri = encodeURIComponent(json);
-        // Replace base64 unsafe chars for URL compatibility
         return btoa(uri).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
     } catch (e) {
         console.error("Encoding error", e);
@@ -136,20 +137,13 @@ const CardBuilder: React.FC<Props> = ({ onThemeChange, activeTheme }) => {
 
   const generateLink = () => {
     setIsGenerating(true);
-    // Mimic processing time for effect
     setTimeout(() => {
-      // Force "to: You" to ensure the receiver experience is personal
       const payload = { ...formData, to: "You", relationship: "Friend", themeId: activeTheme.id };
-      
       const safeDataStr = encodeData(payload);
-      
-      // Construct robust URL
       const baseUrl = window.location.origin + window.location.pathname;
       const url = `${baseUrl}#data=${safeDataStr}`;
-      
       setShareUrl(url);
       setIsGenerating(false);
-      
       setTimeout(() => {
         const shareEl = document.getElementById('share-controls');
         shareEl?.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -167,7 +161,6 @@ const CardBuilder: React.FC<Props> = ({ onThemeChange, activeTheme }) => {
     if (!cardRef.current) return;
     mouseX.set(0);
     mouseY.set(0);
-    
     setTimeout(async () => {
       const canvas = await html2canvas(cardRef.current!, {
         backgroundColor: null, 
@@ -184,13 +177,12 @@ const CardBuilder: React.FC<Props> = ({ onThemeChange, activeTheme }) => {
   };
 
   const shareOnWhatsApp = () => {
-    const text = `*Ramzan Mubarak!* 🌙✨\n\nI’ve created a special heartfelt Dua card just for you. It carries my warmest prayers for your blessed month.\n\n👇 *Click to open your card:*\n${shareUrl}\n\nLet's welcome Ramzan with love and light. 🤲`;
+    const text = `*Ramzan Mubarak!* 🌙✨\n\n${shareUrl}`;
     window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
   };
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-16 items-start">
-      {/* Builder Form */}
       <motion.div 
         initial={{ opacity: 0, x: -30 }}
         whileInView={{ opacity: 1, x: 0 }}
@@ -198,62 +190,54 @@ const CardBuilder: React.FC<Props> = ({ onThemeChange, activeTheme }) => {
         className="glass p-6 md:p-10 rounded-[2.5rem] space-y-8 border-white/10 shadow-2xl"
       >
         <div className="space-y-10">
-          
-          {/* RE-ENGINEERED INPUT - DISTINCT "BOX" STYLE */}
           <div className="relative group">
                <div className="absolute -inset-1 bg-gradient-to-r from-yellow-500/20 via-yellow-200/20 to-yellow-500/20 rounded-3xl blur opacity-30 group-focus-within:opacity-100 transition-opacity duration-700"></div>
-               
                <div className="relative bg-black/40 border border-yellow-400/30 rounded-3xl p-6 md:p-8 flex flex-col items-center gap-4 shadow-[inset_0_2px_15px_rgba(0,0,0,0.5)]">
                    <div className="flex items-center gap-2 text-yellow-400/80 mb-2">
                        <PenTool size={16} className="animate-bounce" />
-                       <span className="text-[10px] uppercase font-black tracking-[0.3em]">Sign Your Masterpiece</span>
+                       <span className="text-[10px] uppercase font-black tracking-[0.3em]">{t.builder.inputs.fromLabel}</span>
                    </div>
-                   
                    <div className="relative w-full">
                        <input 
                          type="text"
-                         placeholder="Type Name Here..."
-                         className="w-full bg-transparent text-center text-3xl md:text-5xl font-['Playfair_Display'] font-black text-white placeholder:text-white/20 focus:outline-none py-2"
+                         placeholder={t.builder.inputs.fromPlaceholder}
+                         className={`w-full bg-transparent text-center text-3xl md:text-5xl font-['Playfair_Display'] font-black text-white placeholder:text-white/20 focus:outline-none py-2 ${lang === 'hi' ? 'font-hindi' : ''}`}
                          value={formData.from}
                          onChange={(e) => setFormData({...formData, from: e.target.value})}
                        />
-                       {/* Input Accent Lines */}
                        <div className="absolute bottom-0 left-0 w-full h-[1px] bg-white/10"></div>
                        <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-0 h-[2px] bg-yellow-400 group-focus-within:w-full transition-all duration-700 ease-out shadow-[0_0_15px_rgba(253,224,71,0.8)]"></div>
                    </div>
-                   
-                   <p className="text-[10px] text-gray-500 italic">This will appear as the sender on the golden card</p>
+                   <p className="text-[10px] text-gray-500 italic">{t.builder.inputs.fromHelp}</p>
                </div>
           </div>
 
           <div>
             <label className="block text-xs font-bold text-gray-500 uppercase tracking-widest mb-2 px-1">
-                Your Heartfelt Wish
+                {t.builder.inputs.wishLabel}
             </label>
             <textarea 
               rows={4}
-              placeholder="May this Ramzan bring you peace, joy, and endless blessings..."
-              className="w-full bg-white/5 border border-white/10 rounded-2xl px-5 py-4 focus:outline-none focus:border-yellow-400 focus:bg-white/10 transition-all resize-none placeholder:text-gray-600 mb-2 font-['Playfair_Display'] text-lg"
+              placeholder={t.builder.inputs.wishPlaceholder}
+              className={`w-full bg-white/5 border border-white/10 rounded-2xl px-5 py-4 focus:outline-none focus:border-yellow-400 focus:bg-white/10 transition-all resize-none placeholder:text-gray-600 mb-2 text-lg ${lang === 'ur' ? 'font-urdu' : lang === 'hi' ? 'font-hindi' : 'font-serif'}`}
               maxLength={150}
               value={formData.wish}
               onChange={(e) => setFormData({...formData, wish: e.target.value})}
             />
             
-            {/* Wish Cycler Controls */}
             <div className="flex items-center justify-between gap-2">
                 <div className="flex items-center gap-2">
                     <button onClick={prevWish} className="p-2 bg-white/5 hover:bg-white/10 rounded-xl transition-colors border border-white/10"><ChevronLeft size={16} /></button>
                     <button onClick={shuffleWish} className="p-2 bg-white/5 hover:bg-white/10 rounded-xl transition-colors border border-white/10"><Shuffle size={16} /></button>
                     <button onClick={nextWish} className="p-2 bg-white/5 hover:bg-white/10 rounded-xl transition-colors border border-white/10"><ChevronRight size={16} /></button>
-                    <span className="text-[10px] text-gray-400 uppercase font-bold tracking-wider ml-1">Browse 100+ Wishes</span>
+                    <span className="text-[10px] text-gray-400 uppercase font-bold tracking-wider ml-1">{t.builder.inputs.browse}</span>
                 </div>
-                <p className="text-[10px] text-gray-500">{formData.wish.length}/150</p>
             </div>
           </div>
         </div>
 
         <div>
-          <label className="block text-xs font-bold text-gray-500 uppercase tracking-widest mb-4 px-1">Visual Theme</label>
+          <label className="block text-xs font-bold text-gray-500 uppercase tracking-widest mb-4 px-1">{t.builder.inputs.themeLabel}</label>
           <div className="grid grid-cols-4 gap-3">
             {THEMES.map((theme) => (
               <button
@@ -278,8 +262,8 @@ const CardBuilder: React.FC<Props> = ({ onThemeChange, activeTheme }) => {
                   <Heart className="text-yellow-400" size={20} />
                 </div>
                 <div className="flex flex-col">
-                  <span className="text-xs md:text-sm font-black uppercase tracking-widest">Soul-Touch Blessing</span>
-                  <span className="text-[10px] text-gray-500">Add a curated spiritual Dua</span>
+                  <span className="text-xs md:text-sm font-black uppercase tracking-widest">{t.builder.inputs.blessingTitle}</span>
+                  <span className="text-[10px] text-gray-500">{t.builder.inputs.blessingDesc}</span>
                 </div>
               </div>
               <label className="relative inline-flex items-center cursor-pointer">
@@ -300,15 +284,14 @@ const CardBuilder: React.FC<Props> = ({ onThemeChange, activeTheme }) => {
                 className="pt-4 border-t border-white/5"
               >
                 <div className="relative group cursor-pointer overflow-hidden p-4 rounded-xl bg-black/20 border border-white/5 hover:border-yellow-400/30 transition-all">
-                  <p className="text-lg text-[#F9FAFB] italic leading-relaxed text-center font-['Playfair_Display']">
-                    "{BLESSINGS[formData.blessingIndex || 0]}"
+                  <p className={`text-lg text-[#F9FAFB] italic leading-relaxed text-center ${lang === 'ur' ? 'font-urdu' : lang === 'hi' ? 'font-hindi' : 'font-serif'}`}>
+                    "{t.blessings[formData.blessingIndex || 0]}"
                   </p>
                   
-                  {/* Blessing Cycler Controls */}
                   <div className="mt-4 flex items-center justify-center gap-3">
                      <button onClick={prevBlessing} className="p-1.5 bg-white/5 hover:bg-white/10 rounded-lg transition-colors"><ChevronLeft size={14} className="text-yellow-400" /></button>
                      <button onClick={shuffleBlessing} className="flex items-center gap-2 text-[10px] text-yellow-400/60 font-bold uppercase tracking-[0.2em] px-3 py-1.5 bg-white/5 rounded-lg hover:bg-white/10 transition-colors">
-                        <RefreshCw size={10} /> Find Blessing
+                        <RefreshCw size={10} /> {t.builder.inputs.findBlessing}
                      </button>
                      <button onClick={nextBlessing} className="p-1.5 bg-white/5 hover:bg-white/10 rounded-lg transition-colors"><ChevronRight size={14} className="text-yellow-400" /></button>
                   </div>
@@ -318,6 +301,7 @@ const CardBuilder: React.FC<Props> = ({ onThemeChange, activeTheme }) => {
           </div>
         </div>
         
+        {/* NATIVE AD PLACEMENT: Highly visible yet integrated */}
         <NativeAdUnit />
 
         <button 
@@ -330,7 +314,7 @@ const CardBuilder: React.FC<Props> = ({ onThemeChange, activeTheme }) => {
           ) : (
             <>
               <Share2 size={24} />
-              Create Universal Link
+              {t.builder.action.generate}
             </>
           )}
         </button>
@@ -344,42 +328,25 @@ const CardBuilder: React.FC<Props> = ({ onThemeChange, activeTheme }) => {
               className="space-y-6 pt-8 border-t border-white/10"
             >
               <div className="text-center">
-                <h4 className="text-xl font-bold text-yellow-400 mb-2">Universal Card Ready! 🎁</h4>
-                <p className="text-sm text-gray-400 italic">"Goodness shared is goodness multiplied."</p>
+                <h4 className="text-xl font-bold text-yellow-400 mb-2">{t.builder.action.ready}</h4>
+                <p className="text-sm text-gray-400 italic">{t.builder.action.quote}</p>
               </div>
 
               <div className="p-5 bg-white/5 rounded-2xl flex items-center gap-4 border border-white/10 group focus-within:border-yellow-400/50 transition-all">
-                <input 
-                  type="text" 
-                  readOnly 
-                  value={shareUrl} 
-                  className="bg-transparent text-xs text-gray-400 flex-1 truncate outline-none font-mono" 
-                />
-                <button 
-                  onClick={copyToClipboard}
-                  className="p-3 hover:bg-white/10 rounded-xl transition-all active:scale-90"
-                >
+                <input type="text" readOnly value={shareUrl} className="bg-transparent text-xs text-gray-400 flex-1 truncate outline-none font-mono" />
+                <button onClick={copyToClipboard} className="p-3 hover:bg-white/10 rounded-xl transition-all active:scale-90">
                   {copied ? <Check size={20} className="text-green-400" /> : <Copy size={20} />}
                 </button>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <button 
-                  onClick={shareOnWhatsApp}
-                  className="py-4 px-6 bg-[#25D366] text-white font-black rounded-2xl flex items-center justify-center gap-3 hover:brightness-110 shadow-lg transition-all"
-                >
-                  <Send size={20} />
-                  <span className="text-sm">Share on WhatsApp</span>
+                <button onClick={shareOnWhatsApp} className="py-4 px-6 bg-[#25D366] text-white font-black rounded-2xl flex items-center justify-center gap-3 hover:brightness-110 shadow-lg transition-all">
+                  <Send size={20} /> <span className="text-sm">{t.builder.action.whatsapp}</span>
                 </button>
-                <button 
-                  onClick={downloadImage}
-                  className="py-4 px-6 bg-white/10 text-white font-black rounded-2xl flex items-center justify-center gap-3 hover:bg-white/20 transition-all border border-white/10"
-                >
-                  <Download size={20} />
-                  <span className="text-sm">Download Card</span>
+                <button onClick={downloadImage} className="py-4 px-6 bg-white/10 text-white font-black rounded-2xl flex items-center justify-center gap-3 hover:bg-white/20 transition-all border border-white/10">
+                  <Download size={20} /> <span className="text-sm">{t.builder.action.download}</span>
                 </button>
               </div>
-              
               <DisplayAdUnit size="medium" />
             </motion.div>
           )}
@@ -388,154 +355,62 @@ const CardBuilder: React.FC<Props> = ({ onThemeChange, activeTheme }) => {
 
       {/* Advanced Preview Section */}
       <div className="lg:sticky lg:top-24 flex flex-col items-center">
-        <div 
-          className="perspective-1000 w-full max-w-[420px]"
-          onMouseMove={handleMouseMove}
-          onMouseLeave={handleMouseLeave}
-        >
+        <div className="perspective-1000 w-full max-w-[420px]" onMouseMove={handleMouseMove} onMouseLeave={handleMouseLeave}>
           <motion.div
             ref={cardRef}
-            style={{ 
-              rotateX, 
-              rotateY,
-              transformStyle: "preserve-3d"
-            }}
+            style={{ rotateX, rotateY, transformStyle: "preserve-3d" }}
             className={`aspect-[3/4.6] rounded-[2rem] md:rounded-[3.5rem] p-5 md:p-10 relative overflow-hidden shadow-[0_30px_60px_rgba(0,0,0,0.6)] transform-gpu group/card`}
           >
-            {/* 1. PHYSICAL CARD BACKGROUND (Fixes Download Transparency Issue) */}
             <div className={`absolute inset-0 bg-gradient-to-br ${activeTheme.gradient} z-[-50]`}></div>
-            
-            {/* 2. NOISE TEXTURE (Premium Feel) */}
             <div className="absolute inset-0 opacity-20 z-[-40] bg-[url('https://grainy-gradients.vercel.app/noise.svg')] mix-blend-overlay"></div>
-
-            <motion.div
-              style={{
-                x: calliTranslateX,
-                y: calliTranslateY,
-                translateZ: -20
-              }}
-              className="absolute inset-0 flex items-center justify-center z-0 pointer-events-none"
-            >
+            <motion.div className="absolute inset-0 flex items-center justify-center z-0 pointer-events-none">
               <CalligraphySVG color={activeTheme.accent} />
             </motion.div>
 
-            <motion.div 
-               style={{ 
-                 x: useTransform(smoothX, [-0.5, 0.5], [-30, 30]),
-                 y: useTransform(smoothY, [-0.5, 0.5], [-30, 30]),
-                 translateZ: -50
-               }}
-               className="absolute inset-0 -z-20 opacity-30 blur-[40px]"
-            >
-               <div className="absolute top-1/4 right-1/4 w-40 md:w-60 h-40 md:h-60 rounded-full" style={{ background: activeTheme.secondary }}></div>
-               <div className="absolute bottom-1/4 left-1/4 w-28 md:w-40 h-28 md:h-40 rounded-full" style={{ background: activeTheme.primary }}></div>
-            </motion.div>
-
-            <motion.div 
-              style={{ 
-                x: moonTranslateX, 
-                y: moonTranslateY,
-                translateZ: 40
-              }}
-              className="absolute top-6 right-6 md:top-10 md:right-10 opacity-70 z-20 pointer-events-none"
-            >
-              <Moon size={80} className="md:w-[140px] md:h-[140px]" fill={activeTheme.accent} stroke="none" />
-            </motion.div>
-
-            <motion.div 
-              style={{ 
-                x: textTranslateX, 
-                y: textTranslateY,
-                translateZ: 80
-              }}
-              className="relative z-30 h-full flex flex-col justify-between items-center text-center transform-gpu"
-            >
+            <motion.div style={{ translateZ: 80 }} className="relative z-30 h-full flex flex-col justify-between items-center text-center transform-gpu">
               <div className="space-y-4">
-                <motion.div 
-                  style={{ translateZ: 20 }}
-                  className="inline-block px-3 py-1 md:px-4 md:py-1.5 rounded-full bg-black/30 text-[9px] md:text-[10px] font-black text-yellow-400 tracking-[0.3em] uppercase border border-yellow-400/20 backdrop-blur-md shadow-lg"
-                >
-                  Holy Ramzan 2026
+                <motion.div style={{ translateZ: 20 }} className="inline-block px-3 py-1 md:px-4 md:py-1.5 rounded-full bg-black/30 text-[9px] md:text-[10px] font-black text-yellow-400 tracking-[0.3em] uppercase border border-yellow-400/20 backdrop-blur-md shadow-lg">
+                  {t.builder.card.season}
                 </motion.div>
-                <motion.div 
-                  style={{ translateZ: 50, color: activeTheme.accent }}
-                  className="arabic text-3xl md:text-5xl font-bold drop-shadow-[0_5px_15px_rgba(0,0,0,0.6)]" 
-                >
-                  رمضان مبارك
+                <motion.div style={{ translateZ: 50, color: activeTheme.accent }} className="arabic text-3xl md:text-5xl font-bold drop-shadow-[0_5px_15px_rgba(0,0,0,0.6)]">
+                  {t.builder.card.greeting}
                 </motion.div>
               </div>
 
               <div className="space-y-6 md:space-y-10 w-full">
                 <div className="space-y-1 md:space-y-2">
-                  <p className="text-[#9CA3AF] text-[10px] md:text-xs font-black uppercase tracking-[0.4em] drop-shadow-sm">A Special Dua For</p>
-                  {/* HYPER AMAZING RECEIVER HIGHLIGHT */}
-                  <motion.h3 
-                    style={{ 
-                      translateZ: 100,
-                      fontFamily: 'Sora, sans-serif'
-                    }}
-                    className="text-3xl sm:text-4xl md:text-6xl font-black leading-none break-words px-2 bg-gradient-to-r from-yellow-100 via-yellow-300 to-yellow-100 bg-clip-text text-transparent drop-shadow-[0_0_25px_rgba(253,224,71,0.6)]" 
-                  >
-                    You
+                  <p className="text-[#9CA3AF] text-[10px] md:text-xs font-black uppercase tracking-[0.4em] drop-shadow-sm">{t.builder.card.specialFor}</p>
+                  <motion.h3 style={{ translateZ: 100, fontFamily: 'Sora, sans-serif' }} className="text-3xl sm:text-4xl md:text-6xl font-black leading-none break-words px-2 bg-gradient-to-r from-yellow-100 via-yellow-300 to-yellow-100 bg-clip-text text-transparent drop-shadow-[0_0_25px_rgba(253,224,71,0.6)]">
+                    {t.builder.card.you}
                   </motion.h3>
                 </div>
                 
-                <motion.div 
-                  style={{ translateZ: 40 }}
-                  className="relative px-2 md:px-8 py-2"
-                >
-                   {/* IMPROVED WISH FONT - Optimized for Decent Style & Readability */}
-                   <p className="text-[#F9FAFB] text-xl sm:text-2xl md:text-3xl leading-relaxed drop-shadow-lg italic font-['Playfair_Display'] font-normal tracking-wide">
-                    "{formData.wish || "May this Ramzan bring you peace, joy, and endless blessings..."}"
+                <motion.div style={{ translateZ: 40 }} className="relative px-2 md:px-8 py-2">
+                   <p className={`text-[#F9FAFB] text-xl sm:text-2xl md:text-3xl leading-relaxed drop-shadow-lg italic font-normal tracking-wide ${lang === 'ur' ? 'font-urdu' : lang === 'hi' ? 'font-hindi' : 'font-serif'}`}>
+                    "{formData.wish || "May this Ramzan bring you peace..."}"
                    </p>
                 </motion.div>
 
                 {formData.includeBlessing && (
-                  <motion.div 
-                    key={formData.blessingIndex}
-                    initial={{ opacity: 0, scale: 0.9 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    style={{ translateZ: 30 }}
-                    className="pt-4 md:pt-8 border-t border-white/10 group/blessing"
-                  >
-                    <p className="text-[10px] md:text-xs text-[#FCD34D] font-black uppercase tracking-[0.5em] mb-3 drop-shadow-[0_0_15px_rgba(252,211,77,0.5)]">Blessings</p>
-                    
-                    {/* IMPROVED BLESSING FONT - Clean & Readable Serif */}
-                    <p className="text-lg md:text-xl text-[#FEF3C7] leading-relaxed px-2 md:px-4 italic drop-shadow-md font-['Playfair_Display'] font-medium">
-                      "{BLESSINGS[formData.blessingIndex || 0]}"
+                  <motion.div key={formData.blessingIndex} initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} style={{ translateZ: 30 }} className="pt-4 md:pt-8 border-t border-white/10 group/blessing">
+                    <p className="text-[10px] md:text-xs text-[#FCD34D] font-black uppercase tracking-[0.5em] mb-3 drop-shadow-[0_0_15px_rgba(252,211,77,0.5)]">{t.builder.inputs.blessingTitle}</p>
+                    <p className={`text-lg md:text-xl text-[#FEF3C7] leading-relaxed px-2 md:px-4 italic drop-shadow-md font-medium ${lang === 'ur' ? 'font-urdu' : lang === 'hi' ? 'font-hindi' : 'font-serif'}`}>
+                      "{t.blessings[formData.blessingIndex || 0]}"
                     </p>
                   </motion.div>
                 )}
               </div>
 
-              <motion.div 
-                style={{ translateZ: 60 }}
-                className="mt-auto pt-4 md:pt-8 flex flex-col items-center"
-              >
-                <p className="text-[8px] md:text-[10px] text-gray-400 font-black uppercase tracking-[0.2em] mb-1 drop-shadow-sm">With Pure Heart,</p>
-                
-                {/* SOLID GOLD CARD NAME STYLE - EXPERT FIX FOR DOWNLOAD & COMPATIBILITY */}
+              <motion.div style={{ translateZ: 60 }} className="mt-auto pt-4 md:pt-8 flex flex-col items-center">
+                <p className="text-[8px] md:text-[10px] text-gray-400 font-black uppercase tracking-[0.2em] mb-1 drop-shadow-sm">{t.builder.card.withLove}</p>
                 <div className="relative group/name">
-                    <p 
-                       className="text-4xl md:text-6xl font-['Playfair_Display'] font-black italic tracking-wide text-[#FFD700] pb-2 relative z-10"
-                       style={{ textShadow: '0 4px 10px rgba(0, 0, 0, 0.5), 0 0 20px rgba(255, 215, 0, 0.6)' }}
-                    >
+                    <p className={`text-4xl md:text-6xl font-black italic tracking-wide text-[#FFD700] pb-2 relative z-10 ${lang === 'hi' ? 'font-hindi' : 'font-[Playfair_Display]'}`} style={{ textShadow: '0 4px 10px rgba(0, 0, 0, 0.5), 0 0 20px rgba(255, 215, 0, 0.6)' }}>
                         {formData.from || "Your Name"}
                     </p>
-                    {/* Subtle underline glow */}
                     <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-1/2 h-[2px] bg-yellow-500 blur-[2px] opacity-70"></div>
                 </div>
               </motion.div>
             </motion.div>
-
-            <motion.div 
-              className="absolute inset-0 -z-10 blur-[140px] pointer-events-none opacity-40"
-              animate={{ 
-                scale: [1, 1.2, 1],
-              }}
-              transition={{ duration: 6, repeat: Infinity }}
-              style={{ background: activeTheme.glow }}
-            />
           </motion.div>
         </div>
         <div className="mt-8 md:mt-14 flex flex-col items-center gap-4">
@@ -545,15 +420,10 @@ const CardBuilder: React.FC<Props> = ({ onThemeChange, activeTheme }) => {
           </div>
         </div>
       </div>
-      
       <style>{`
-        .animate-spin-slow {
-          animation: spin 3s linear infinite;
-        }
-        @keyframes spin {
-          from { transform: rotate(0deg); }
-          to { transform: rotate(360deg); }
-        }
+        .font-urdu { font-family: 'Noto Nastaliq Urdu', serif; line-height: 1.8; }
+        .font-hindi { font-family: 'Noto Sans Devanagari', sans-serif; }
+        .font-serif { font-family: 'Playfair Display', serif; }
       `}</style>
     </div>
   );

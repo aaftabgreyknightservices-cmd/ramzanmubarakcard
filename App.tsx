@@ -2,19 +2,19 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { CardData, CardTheme, THEMES } from './types';
+import { translations, Language } from './translations';
 
 // Components
 import Hero from './components/Hero';
 import CardBuilder from './components/CardBuilder';
 import ReceiverView from './components/ReceiverView';
 import Footer from './components/Footer';
-import EidCountdown from './components/EidCountdown'; // Imported Countdown
+import EidCountdown from './components/EidCountdown';
 import { DisplayAdUnit } from './components/AdUnits';
 
 // --- ROBUST URL DECODING HELPER ---
 const decodeData = (str: string) => {
   try {
-      // Restore standard Base64 characters
       str = str.replace(/-/g, '+').replace(/_/g, '/');
       while (str.length % 4) {
         str += '=';
@@ -33,14 +33,30 @@ const App: React.FC = () => {
   const [isReceiverMode, setIsReceiverMode] = useState(false);
   const [initialData, setInitialData] = useState<CardData | null>(null);
   const [loading, setLoading] = useState(true);
+  
+  // Language State
+  const [lang, setLang] = useState<Language>('en');
+
+  // Handle Document Direction & Fonts based on Language
+  useEffect(() => {
+    const isRTL = lang === 'ur' || lang === 'ar';
+    document.documentElement.dir = isRTL ? 'rtl' : 'ltr';
+    document.documentElement.lang = lang;
+    
+    // Dynamic Font Class on Body
+    document.body.className = ''; // Reset
+    if (lang === 'ur') document.body.classList.add('urdu');
+    else if (lang === 'ar') document.body.classList.add('arabic');
+    else if (lang === 'hi') document.body.classList.add('hindi');
+    else document.body.classList.add('font-sans');
+
+  }, [lang]);
 
   useEffect(() => {
-    // Robustly find 'data' param in hash, handling various router oddities
     const hash = window.location.hash;
     let dataParam = null;
 
     if (hash.includes('data=')) {
-        // Extract everything after data= until the next & or end of string
         const match = hash.match(/data=([^&]+)/);
         if (match && match[1]) {
             dataParam = match[1];
@@ -56,17 +72,16 @@ const App: React.FC = () => {
           setActiveTheme(theme);
       }
     }
-    
-    // Smooth loading transition
     setTimeout(() => setLoading(false), 500);
   }, []);
 
   const handleCreateNew = () => {
     setIsReceiverMode(false);
-    // Remove hash without scrolling
     history.pushState("", document.title, window.location.pathname + window.location.search);
     setInitialData(null);
   };
+
+  const t = translations[lang];
 
   if (loading) {
       return (
@@ -77,24 +92,18 @@ const App: React.FC = () => {
   }
 
   if (isReceiverMode && initialData) {
-    return <ReceiverView data={initialData} onCreateNew={handleCreateNew} />;
+    return <ReceiverView data={initialData} onCreateNew={handleCreateNew} t={t.receiver} lang={lang} />;
   }
 
   return (
     <div className={`min-h-screen bg-gradient-to-b ${activeTheme.gradient} text-white transition-all duration-1000`}>
-      <Hero />
+      <Hero t={t.hero} lang={lang} setLang={setLang} />
       
-      {/* 
-         STRATEGIC PLACEMENT: 
-         1. Hero hooks them.
-         2. Countdown builds hype (Content Sandwich).
-         3. Ad catches them while they look at the time.
-      */}
-      <EidCountdown />
+      <EidCountdown t={t.countdown} lang={lang} />
 
-      {/* SECTION AD: Monetize scroll between Hero/Countdown and Builder */}
+      {/* Primary Ad Placement: Between Info & Builder */}
       <div className="max-w-7xl mx-auto px-6">
-         <DisplayAdUnit size="medium" />
+         <DisplayAdUnit size="large" />
       </div>
 
       <section id="builder" className="py-24 px-6">
@@ -104,14 +113,18 @@ const App: React.FC = () => {
             whileInView={{ opacity: 1, y: 0 }}
             className="text-center mb-20"
           >
-            <h2 className="text-5xl md:text-7xl font-black mb-6 tracking-tighter">Manifest Your Blessing 🌙</h2>
+            <h2 className={`text-5xl md:text-7xl font-black mb-6 tracking-tighter ${lang === 'ur' ? 'leading-[1.4]' : lang === 'hi' ? 'font-hindi leading-[1.4]' : ''}`}>
+               {t.builder.title}
+            </h2>
             <p className="text-gray-400 max-w-2xl mx-auto text-lg md:text-xl font-medium italic">
-              "Words are the wings of the soul." Craft a digital treasure that bridges hearts across any distance.
+               {t.builder.subtitle}
             </p>
           </motion.div>
           <CardBuilder 
             onThemeChange={setActiveTheme} 
             activeTheme={activeTheme}
+            t={t}
+            lang={lang}
           />
         </div>
       </section>
