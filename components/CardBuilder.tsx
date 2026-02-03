@@ -494,9 +494,13 @@ const CardBuilder: React.FC<Props> = ({ onThemeChange, activeTheme }) => {
                 className="mt-auto pt-4 md:pt-8 flex flex-col items-center"
               >
                 <p className="text-[8px] md:text-[10px] text-gray-400 font-black uppercase tracking-[0.2em] mb-1 drop-shadow-sm">With Pure Heart,</p>
-                {/* LIQUID GOLD CARD NAME STYLE */}
+                
+                {/* SOLID GOLD CARD NAME STYLE - EXPERT FIX FOR DOWNLOAD & COMPATIBILITY */}
                 <div className="relative group/name">
-                    <p className="text-4xl md:text-6xl font-['Playfair_Display'] font-black italic tracking-wide text-transparent bg-clip-text bg-gradient-to-r from-[#FFD700] via-[#FFF8DC] to-[#FFD700] bg-[length:200%_auto] animate-shine drop-shadow-[0_4px_10px_rgba(255,215,0,0.5)] pb-2 relative z-10">
+                    <p 
+                       className="text-4xl md:text-6xl font-['Playfair_Display'] font-black italic tracking-wide text-[#FFD700] pb-2 relative z-10"
+                       style={{ textShadow: '0 4px 10px rgba(0, 0, 0, 0.5), 0 0 20px rgba(255, 215, 0, 0.6)' }}
+                    >
                         {formData.from || "Your Name"}
                     </p>
                     {/* Subtle underline glow */}
@@ -530,14 +534,6 @@ const CardBuilder: React.FC<Props> = ({ onThemeChange, activeTheme }) => {
         @keyframes spin {
           from { transform: rotate(0deg); }
           to { transform: rotate(360deg); }
-        }
-        @keyframes shine {
-            to {
-                background-position: 200% center;
-            }
-        }
-        .animate-shine {
-            animation: shine 4s linear infinite;
         }
       `}</style>
     </div>
