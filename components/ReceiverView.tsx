@@ -38,7 +38,7 @@ const CalligraphySVG = ({ color }: { color: string }) => (
 const GoldenEnvelope = ({ from, onClick, isOpening }: { from: string, onClick: () => void, isOpening: boolean }) => {
   return (
     <motion.div 
-        className="relative perspective-1000 group cursor-pointer z-50" 
+        className="relative perspective-1000 group cursor-pointer z-40" 
         onClick={onClick}
         initial={{ y: 50, opacity: 0, scale: 0.9 }}
         animate={isOpening ? 
@@ -151,28 +151,34 @@ const ReceiverView: React.FC<Props> = ({ data, onCreateNew }) => {
     setIsOpening(true);
 
     // 3. Trigger Flash (Gold -> White)
+    // Delay slightly so user sees the envelope opening animation
     setTimeout(() => {
         setFlash(true);
     }, 400);
 
-    // 4. Swap Content
+    // 4. Swap Content (CRITICAL FIX: Time this while screen is WHITE)
+    // Wait until flash is fully opacity-100 (400ms delay + 500ms transition = 900ms safe point)
     setTimeout(() => {
         setRevealed(true);
+        window.scrollTo(0, 0); // Ensure scroll position is reset
         
         // Explosion of Confetti
-        const end = Date.now() + 1500;
-        const colors = [theme.accent, '#FFD700', '#ffffff'];
-        (function frame() {
-          confetti({ particleCount: 4, angle: 60, spread: 55, origin: { x: 0 }, colors: colors });
-          confetti({ particleCount: 4, angle: 120, spread: 55, origin: { x: 1 }, colors: colors });
-          if (Date.now() < end) requestAnimationFrame(frame);
-        }());
+        try {
+            const end = Date.now() + 1500;
+            const colors = [theme.accent, '#FFD700', '#ffffff'];
+            (function frame() {
+              confetti({ particleCount: 4, angle: 60, spread: 55, origin: { x: 0 }, colors: colors });
+              confetti({ particleCount: 4, angle: 120, spread: 55, origin: { x: 1 }, colors: colors });
+              if (Date.now() < end) requestAnimationFrame(frame);
+            }());
+        } catch(e) { console.error(e); }
     }, 900);
 
-    // 5. Fade Out Flash
+    // 5. Fade Out Flash (Reveal Card)
+    // Give React time to render the heavy 3D card (wait 600ms after swap)
     setTimeout(() => {
         setFlash(false);
-    }, 1200);
+    }, 1500);
   };
 
   const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
@@ -191,13 +197,15 @@ const ReceiverView: React.FC<Props> = ({ data, onCreateNew }) => {
 
   const handleAmeen = () => {
     setSaidAmeen(true);
-    confetti({
-      particleCount: 150,
-      spread: 70,
-      origin: { y: 0.8 },
-      colors: [theme.accent, theme.secondary, '#FFFFFF'],
-      gravity: 1.2
-    });
+    try {
+        confetti({
+          particleCount: 150,
+          spread: 70,
+          origin: { y: 0.8 },
+          colors: [theme.accent, theme.secondary, '#FFFFFF'],
+          gravity: 1.2
+        });
+    } catch(e) {}
   };
 
   return (
@@ -228,12 +236,25 @@ const ReceiverView: React.FC<Props> = ({ data, onCreateNew }) => {
       <SmartLinkButton />
 
       {/* --- FLASH MASK (Prevents Blank Screen) --- */}
+      {/* Z-Index 50 to cover Envelope (z-40) and Card (z-20) */}
       <div 
-        className={`fixed inset-0 bg-white z-[9999] pointer-events-none transition-opacity ease-in-out ${flash ? 'opacity-100 duration-500' : 'opacity-0 duration-[2000ms]'}`} 
+        className={`fixed inset-0 bg-white z-50 pointer-events-none transition-opacity ease-in-out ${flash ? 'opacity-100 duration-500' : 'opacity-0 duration-[2000ms]'}`} 
       />
 
+      {/* Divine Rays Effect (Only visible when revealed) */}
+      {revealed && (
+         <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 0.3 }}
+            transition={{ duration: 2 }}
+            className="absolute inset-0 pointer-events-none z-0 flex items-center justify-center"
+         >
+             <div className="w-[200vw] h-[200vw] bg-gradient-to-r from-transparent via-yellow-400/20 to-transparent rotate-45 blur-[100px] animate-pulse"></div>
+         </motion.div>
+      )}
+
       {/* Background Particles */}
-      <div className="absolute inset-0 pointer-events-none">
+      <div className="absolute inset-0 pointer-events-none z-0">
          <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 mix-blend-overlay"></div>
          {[...Array(30)].map((_, i) => (
             <motion.div
@@ -246,7 +267,7 @@ const ReceiverView: React.FC<Props> = ({ data, onCreateNew }) => {
          ))}
       </div>
 
-      <AnimatePresence mode="popLayout">
+      <AnimatePresence mode="wait">
         
         {/* STAGE 1: ENVELOPE */}
         {!revealed && (
@@ -273,9 +294,10 @@ const ReceiverView: React.FC<Props> = ({ data, onCreateNew }) => {
         {revealed && (
           <motion.div
             key="card-layer"
-            initial={{ opacity: 1 }} 
-            animate={{ opacity: 1 }}
-            className="w-full max-w-2xl z-10 flex flex-col items-center gap-8 md:gap-14 pb-20 relative"
+            initial={{ opacity: 0, scale: 0.95 }} 
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 1, ease: "easeOut" }}
+            className="w-full max-w-2xl z-20 flex flex-col items-center gap-8 md:gap-14 py-10 relative"
           >
              <motion.div 
                initial={{ y: -50, opacity: 0 }}
@@ -292,9 +314,6 @@ const ReceiverView: React.FC<Props> = ({ data, onCreateNew }) => {
              <motion.div
                 ref={cardRef}
                 style={{ rotateX, rotateY, transformStyle: "preserve-3d" }}
-                initial={{ scale: 0.9, y: 50 }}
-                animate={{ scale: 1, y: 0 }}
-                transition={{ type: "spring", stiffness: 100, damping: 20, delay: 0.2 }}
                 className="w-full aspect-[3/4.6] glass rounded-[3rem] md:rounded-[4rem] p-6 md:p-12 flex flex-col justify-between items-center text-center shadow-[0_50px_100px_rgba(0,0,0,0.8)] relative transform-gpu"
              >
                 <motion.div 
