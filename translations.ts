@@ -66,6 +66,7 @@ export const translations = {
       ameenSaid: "Ameen Said",
       createMine: "Create Mine"
     },
+    // IMPORTANT: These must match types.ts PRESET_WISHES exactly for compression to work.
     wishes: [
       "May this Ramzan bring you peace, joy, and endless blessings, keeping you in my duas.",
       "May this Ramzan shine the light of guidance in your home and your heart forever.",
@@ -76,14 +77,14 @@ export const translations = {
       "May this Ramzan bring you strength in every suhoor and peace in every iftar.",
       "May this Ramzan become the beautiful turning point you have been waiting for.",
       "May this Ramzan open the gates of Heaven for you and ensure the gates of Mercy never close.",
-      "May this Ramzan grant you 30 days of clemency, 720 hours of enlightenment, and 43,200 minutes of joy.",
+      "May this Ramzan grant you 30 days of clemency, 720 hours of enlightenment, and 43,200 minutes of joy."
     ],
     blessings: [
         "May the light of this month find the cracks in your heart and fill them with unshakeable peace.",
         "I pray that every silent struggle you carry is answered with a mercy so vast it brings you to tears of joy.",
         "May your home be a sanctuary where angels love to visit and where love is the only language spoken.",
         "I asked Allah today to protect your smile and grant you the kind of serenity that the world can't take away.",
-        "May your fasts be a shield for your soul and your prayers a bridge to everything your heart desires.",
+        "May your fasts be a shield for your soul and your prayers a bridge to everything your heart desires."
     ]
   },
   ur: {

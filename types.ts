@@ -61,9 +61,10 @@ export const THEMES: CardTheme[] = [
   }
 ];
 
+// CRITICAL: This list matches translations.ts EXACTLY to ensure compression works.
 export const PRESET_WISHES = [
-  "May this Ramzan bring you peace, joy, and endless blessings.",
-  "May this Ramzan shine the light of guidance in your home.",
+  "May this Ramzan bring you peace, joy, and endless blessings, keeping you in my duas.",
+  "May this Ramzan shine the light of guidance in your home and your heart forever.",
   "May this Ramzan fill your month with mercy and your heart with profound gratitude.",
   "May this Ramzan be the month Allah accepts your fasts and answers your secret prayers.",
   "May this Ramzan turn your heart into a vessel of Noor and fill your days with Barakah.",
@@ -75,18 +76,19 @@ export const PRESET_WISHES = [
 ];
 
 export const BLESSINGS = [
-  "May the light of this month find the cracks in your heart.",
-  "I pray that every silent struggle you carry is answered.",
-  "May your home be a sanctuary where angels love to visit.",
-  "I asked Allah today to protect your smile and grant you serenity.",
-  "May your fasts be a shield for your soul and your prayers a bridge."
+  "May the light of this month find the cracks in your heart and fill them with unshakeable peace.",
+  "I pray that every silent struggle you carry is answered with a mercy so vast it brings you to tears of joy.",
+  "May your home be a sanctuary where angels love to visit and where love is the only language spoken.",
+  "I asked Allah today to protect your smile and grant you the kind of serenity that the world can't take away.",
+  "May your fasts be a shield for your soul and your prayers a bridge to everything your heart desires."
 ];
 
 // Helper: Normalize text
 const normalize = (str: string) => str.toLowerCase().replace(/[^a-z0-9]/g, '');
 
-// --- V4 PROTOCOL: BITWISE PACKING ---
-// Result Code Length: 2-3 characters for presets.
+// --- V5 PROTOCOL: MATRIX PACKING WITH SALT ---
+// Logic: (Salt << 14) | (Theme << 12) | (Blessing << 8) | WishIndex
+// Result: 3 Characters Max.
 
 export const compressData = (data: CardData): string => {
   try {
@@ -94,71 +96,79 @@ export const compressData = (data: CardData): string => {
     let tIdx = THEMES.findIndex(t => t.id === data.themeId);
     if (tIdx === -1) tIdx = 0;
 
-    // 2. Map Blessing (0-5)
-    // 0 = No Blessing, 1..5 = Blessing Index + 1
+    // 2. Map Blessing (0-6)
+    // 0 = No Blessing, 1..6 = Blessing Index + 1
     const bVal = data.includeBlessing ? (data.blessingIndex || 0) + 1 : 0;
 
-    // 3. Map Wish (0-9 or Custom)
+    // 3. Map Wish (0-99)
+    // We normalize to ignore small typos or punctuation differences
     const normWish = normalize(data.wish);
     const wIdx = PRESET_WISHES.findIndex(w => normalize(w) === normWish);
 
     if (wIdx !== -1) {
-        // --- PRESET PATH (Bit Packing) ---
-        // Formula: Theme + (Blessing * 4) + (Wish * 24)
-        // Max Value: 3 + (5*4) + (9*24) = 3 + 20 + 216 = 239
-        // 239 in Base36 is "6n". Just 2 chars!
-        const packedValue = tIdx + (bVal * 4) + (wIdx * 24);
+        // --- PRESET PATH ---
+        
+        // UNIQUE SALT: Random number 0-3. 
+        // This ensures if you generate the same card twice, the code looks different 
+        // (e.g. '4k' vs 'a2') but decodes to the same content.
+        const salt = Math.floor(Math.random() * 4); 
+
+        // BIT PACKING STRATEGY
+        // Salt (2 bits) | Theme (2 bits) | Blessing (4 bits) | Wish (7 bits)
+        // Total 15 bits. Max integer ~32768.
+        // Base36('32768') is 'pa8' (3 chars).
+        
+        const packedValue = (salt << 13) | (tIdx << 11) | (bVal << 7) | wIdx;
+        
         return packedValue.toString(36);
     } else {
         // --- CUSTOM PATH (Fallback) ---
-        // We can't compress custom text to 2 chars, but we can keep it clean.
-        // Prefix with '~' to denote custom.
-        // Encode Theme & Blessing in 1 char: T + (B*4) -> Base36
+        // Used only if user types a completely custom message
         const configVal = tIdx + (bVal * 4);
         const configChar = configVal.toString(36);
-        
-        // Use URI Encoding for readability or LZString if huge
         const safeWish = encodeURIComponent(data.wish).replace(/%20/g, '+');
         return `~${configChar}.${safeWish}`;
     }
   } catch (e) {
-    console.error("V4 Compression Error", e);
-    return "0"; // Default fallback
+    console.error("V5 Compression Error", e);
+    return "0";
   }
 };
 
 export const decompressData = (code: string, senderName: string = "A Friend"): CardData => {
   try {
     let tIdx = 0;
-    let bVal = 1; // Default to first blessing included
+    let bVal = 1; 
     let wish = PRESET_WISHES[0];
-
-    // Decode Sender Name (Restore spaces)
     const safeSender = senderName.replace(/_/g, ' ').replace(/-/g, ' ') || "A Friend";
 
     if (code.startsWith('~')) {
-        // --- CUSTOM PATH ---
-        // Format: ~[ConfigChar].[WishText]
+        // Custom Path
         const parts = code.substring(1).split('.');
         const configChar = parts[0];
-        const wishText = parts.slice(1).join('.'); // Rejoin if wish had dots
-
+        const wishText = parts.slice(1).join('.');
         const configVal = parseInt(configChar, 36);
         tIdx = configVal % 4;
         bVal = Math.floor(configVal / 4);
-        
         wish = decodeURIComponent(wishText.replace(/\+/g, '%20'));
     } else {
-        // --- PRESET PATH ---
+        // Preset Path (Matrix Unpacking)
         const val = parseInt(code, 36);
         if (!isNaN(val)) {
-            // Reverse Formula: Theme + (Blessing * 4) + (Wish * 24)
-            tIdx = val % 4;
-            const remaining = Math.floor(val / 4);
-            bVal = remaining % 6;
-            const wIdx = Math.floor(remaining / 6);
+            // Unpack Bits
+            // We discard the Salt (top 2 bits) as it's just for visual uniqueness
+            
+            // Mask: 1111111 (127) gets the Wish (bottom 7 bits)
+            const wIdx = val & 127;
+            
+            // Shift right 7, Mask: 1111 (15) gets Blessing
+            const bRaw = (val >> 7) & 15;
+            
+            // Shift right 11, Mask: 11 (3) gets Theme
+            tIdx = (val >> 11) & 3;
             
             wish = PRESET_WISHES[wIdx] || PRESET_WISHES[0];
+            bVal = bRaw;
         }
     }
 
@@ -174,7 +184,7 @@ export const decompressData = (code: string, senderName: string = "A Friend"): C
     };
 
   } catch (e) {
-    console.error("V4 Decompression Error", e);
+    console.error("V5 Decompression Error", e);
     return {
         from: senderName || "A Friend",
         to: "You",
