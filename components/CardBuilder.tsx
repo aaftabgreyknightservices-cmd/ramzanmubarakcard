@@ -6,7 +6,6 @@ import html2canvas from 'html2canvas';
 import { CardData, CardTheme, THEMES, compressData } from '../types';
 import { Language } from '../translations';
 import { NativeAdUnit, DisplayAdUnit } from './AdUnits';
-import { shortenUrl } from '../services/shortener';
 
 interface Props {
   onThemeChange: (theme: CardTheme) => void;
@@ -60,9 +59,6 @@ const CardBuilder: React.FC<Props> = ({ onThemeChange, activeTheme, t, lang }) =
   const [wishIndex, setWishIndex] = useState(0);
   const [isGenerating, setIsGenerating] = useState(false);
   const [shareUrl, setShareUrl] = useState('');
-  const [shortLink, setShortLink] = useState('');
-  const [customSlug, setCustomSlug] = useState('');
-  const [useShortener, setUseShortener] = useState(false);
   
   const [copied, setCopied] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
@@ -161,48 +157,31 @@ const CardBuilder: React.FC<Props> = ({ onThemeChange, activeTheme, t, lang }) =
 
   const generateLink = async () => {
     setIsGenerating(true);
-    setShortLink(''); // Reset short link
     
     // Allow UI to breathe
     await new Promise(resolve => setTimeout(resolve, 800));
 
     const payload = { ...formData, to: "You", relationship: "Friend", themeId: activeTheme.id };
     
-    // Compress Data
+    // Compress Data using V3 Algorithm (Result is ~10-15 chars for preset wishes)
     const code = compressData(payload);
     
-    // 1. Determine the Slug (Signature)
-    // Use custom slug if provided, otherwise sanitize sender name
-    let slug = customSlug.trim() || formData.from.trim();
-    // Sanitize: allow letters, numbers, foreign chars, hyphens. Remove spaces/special symbols
-    slug = slug.replace(/\s+/g, '-').replace(/[^a-zA-Z0-9\u0600-\u06FF\u0900-\u097F-]/g, '');
-    
-    // Construct Long URL (Stateless)
-    const personalizedHash = slug ? `${slug}.${code}` : code;
+    // Construct Short URL (Stateless)
+    // We remove the name prefix to keep it "very very short" as requested.
     const baseUrl = window.location.origin + window.location.pathname;
-    const longUrl = `${baseUrl}#${personalizedHash}`;
+    const shortUrl = `${baseUrl}#${code}`;
     
-    setShareUrl(longUrl);
-
-    // 2. Attempt Shortening (If toggled)
-    if (useShortener) {
-        const shortened = await shortenUrl(longUrl, customSlug || undefined);
-        if (shortened) {
-            setShortLink(shortened);
-        }
-    }
-
+    setShareUrl(shortUrl);
     setIsGenerating(false);
+
     setTimeout(() => {
         const shareEl = document.getElementById('share-controls');
         shareEl?.scrollIntoView({ behavior: 'smooth', block: 'center' });
     }, 100);
   };
 
-  const activeLink = shortLink || shareUrl;
-
   const copyToClipboard = () => {
-    navigator.clipboard.writeText(activeLink);
+    navigator.clipboard.writeText(shareUrl);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
@@ -211,7 +190,7 @@ const CardBuilder: React.FC<Props> = ({ onThemeChange, activeTheme, t, lang }) =
     const shareData = {
         title: 'Ramzan Mubarak 🌙',
         text: `A special 3D gift card from ${formData.from}. Open to reveal your blessing!`,
-        url: activeLink
+        url: shareUrl
     };
 
     if (navigator.share) {
@@ -302,41 +281,6 @@ const CardBuilder: React.FC<Props> = ({ onThemeChange, activeTheme, t, lang }) =
                    </div>
                    <p className="text-[10px] text-gray-500 italic">{t.builder.inputs.fromHelp}</p>
                </div>
-          </div>
-
-          {/* CUSTOM LINK SLUG & SHORTENER TOGGLE */}
-          <div className="bg-white/5 rounded-2xl p-4 border border-white/10 space-y-4">
-               <div className="flex items-center justify-between">
-                   <div className="flex items-center gap-2 text-gray-300">
-                       <LinkIcon size={14} />
-                       <span className="text-xs font-bold uppercase tracking-wider">Customize Link</span>
-                   </div>
-                   <label className="flex items-center gap-2 cursor-pointer group">
-                       <span className="text-[10px] text-gray-500 group-hover:text-yellow-400 transition-colors">Make it Short</span>
-                       <input 
-                         type="checkbox" 
-                         checked={useShortener}
-                         onChange={(e) => setUseShortener(e.target.checked)}
-                         className="accent-yellow-400 w-4 h-4"
-                       />
-                   </label>
-               </div>
-               
-               <div className="flex items-center gap-2 bg-black/30 rounded-xl px-3 py-2 border border-white/5 focus-within:border-yellow-400/40 transition-colors">
-                   <span className="text-gray-500 text-xs select-none">.../ #</span>
-                   <input 
-                     type="text"
-                     placeholder={formData.from ? formData.from.replace(/\s+/g, '-') : "your-name"}
-                     value={customSlug}
-                     onChange={(e) => setCustomSlug(e.target.value)}
-                     className="bg-transparent flex-1 outline-none text-sm text-yellow-100 placeholder:text-gray-600"
-                   />
-               </div>
-               {useShortener && (
-                   <p className="text-[9px] text-gray-500 italic">
-                      Note: Generates a TinyURL. Requires internet connection.
-                   </p>
-               )}
           </div>
 
           {/* WISH INPUT */}
@@ -442,8 +386,8 @@ const CardBuilder: React.FC<Props> = ({ onThemeChange, activeTheme, t, lang }) =
             <RefreshCw className="animate-spin" size={24} />
           ) : (
             <>
-              {useShortener ? <Wand2 size={24} /> : <Share2 size={24} />}
-              {useShortener ? "Create Magic Link" : t.builder.action.generate}
+              <Share2 size={24} />
+              {t.builder.action.generate}
             </>
           )}
         </button>
@@ -462,11 +406,11 @@ const CardBuilder: React.FC<Props> = ({ onThemeChange, activeTheme, t, lang }) =
               </div>
 
               <div className="p-5 bg-white/5 rounded-2xl flex items-center gap-4 border border-white/10 group focus-within:border-yellow-400/50 transition-all relative overflow-hidden">
-                <input type="text" readOnly value={activeLink} className="bg-transparent text-xs text-gray-400 flex-1 truncate outline-none font-mono z-10" />
+                <input type="text" readOnly value={shareUrl} className="bg-transparent text-xs text-gray-400 flex-1 truncate outline-none font-mono z-10" />
                 <button onClick={copyToClipboard} className="p-3 hover:bg-white/10 rounded-xl transition-all active:scale-90 z-10">
                   {copied ? <Check size={20} className="text-green-400" /> : <Copy size={20} />}
                 </button>
-                {shortLink && <div className="absolute right-0 top-0 bottom-0 w-24 bg-gradient-to-l from-green-500/10 to-transparent pointer-events-none" />}
+                <div className="absolute right-0 top-0 bottom-0 w-24 bg-gradient-to-l from-green-500/10 to-transparent pointer-events-none" />
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
