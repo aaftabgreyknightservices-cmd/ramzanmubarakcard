@@ -63,17 +63,28 @@ const App: React.FC = () => {
               // 1. Set Theme Immediately
               const theme = THEMES.find(t => t.id === decoded.themeId) || THEMES[0];
               setActiveTheme(theme);
-              
-              // 2. Scroll to Builder (Editable View)
-              setTimeout(() => {
-                 document.getElementById('builder')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-              }, 800);
           }
        }
     }
     // Simulate asset loading
     setTimeout(() => setLoading(false), 500);
   }, []);
+
+  // Separate effect to handle scrolling once loading is complete and data is ready
+  useEffect(() => {
+    if (!loading && initialData) {
+        // Using a timeout allows the layout to stabilize (e.g. Hero animation or fonts)
+        const timer = setTimeout(() => {
+            const builderElement = document.getElementById('builder');
+            if (builderElement) {
+                // 'start' alignment is usually better for mobile so the title isn't cut off
+                builderElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+        }, 600); // Trigger slightly after the loading screen disappears
+        
+        return () => clearTimeout(timer);
+    }
+  }, [loading, initialData]);
 
   const handleCreateNew = () => {
     // Reset to defaults
@@ -102,7 +113,7 @@ const App: React.FC = () => {
          <DisplayAdUnit size="large" />
       </div>
 
-      <section id="builder" className="py-24 px-6">
+      <section id="builder" className="py-24 px-6 min-h-screen">
         <div className="max-w-7xl mx-auto">
           <motion.div 
             initial={{ opacity: 0, y: 50 }}
