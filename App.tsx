@@ -7,6 +7,7 @@ import { translations, Language } from './translations';
 // Components
 import Hero from './components/Hero';
 import CardBuilder from './components/CardBuilder';
+import ReceiverView from './components/ReceiverView';
 import Footer from './components/Footer';
 import EidCountdown from './components/EidCountdown';
 import { DisplayAdUnit } from './components/AdUnits';
@@ -70,34 +71,11 @@ const App: React.FC = () => {
     setTimeout(() => setLoading(false), 500);
   }, []);
 
-  // Robust scrolling logic for shared links (Mobile Optimized)
-  useEffect(() => {
-    if (!loading && initialData) {
-        // Function to trigger scroll
-        const scrollToBuilder = () => {
-            const builderSection = document.getElementById('builder');
-            if (builderSection) {
-                // block: 'start' aligns the top of the section with the top of the viewport
-                // This is generally more robust for mobile layout shifts than calculated offsets
-                builderSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
-            }
-        };
-
-        // Sequence of scroll attempts to ensure it catches layout shifts (Ads, Hero resize, Address bar)
-        // 1. Quick scroll as soon as DOM is ready
-        const t1 = setTimeout(scrollToBuilder, 100);
-        
-        // 2. Reinforced scroll after animations/ads have likely settled
-        const t2 = setTimeout(scrollToBuilder, 1000);
-        
-        return () => { clearTimeout(t1); clearTimeout(t2); };
-    }
-  }, [loading, initialData]);
-
   const handleCreateNew = () => {
     // Reset to defaults
     setInitialData(null);
     history.pushState("", document.title, window.location.pathname + window.location.search);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const t = translations[lang];
@@ -110,6 +88,20 @@ const App: React.FC = () => {
       );
   }
 
+  // SHARED LINK VIEW (RECEIVER EXPERIENCE)
+  // Replaces the standard landing page when a card data is present in URL
+  if (initialData) {
+      return (
+          <ReceiverView 
+             data={initialData} 
+             onCreateNew={handleCreateNew} 
+             t={t.receiver}
+             lang={lang}
+          />
+      );
+  }
+
+  // DEFAULT VIEW (BUILDER / LANDING PAGE)
   return (
     <div className={`min-h-screen bg-gradient-to-b ${activeTheme.gradient} text-white transition-all duration-1000`}>
       <Hero t={t.hero} lang={lang} setLang={setLang} />
@@ -136,7 +128,6 @@ const App: React.FC = () => {
             </p>
           </motion.div>
           
-          {/* Card Builder in 'Editable Mode' if initialData is present */}
           <CardBuilder 
             onThemeChange={setActiveTheme} 
             activeTheme={activeTheme}
