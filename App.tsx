@@ -7,7 +7,6 @@ import { translations, Language } from './translations';
 // Components
 import Hero from './components/Hero';
 import CardBuilder from './components/CardBuilder';
-import ReceiverView from './components/ReceiverView';
 import Footer from './components/Footer';
 import EidCountdown from './components/EidCountdown';
 import { DisplayAdUnit } from './components/AdUnits';
@@ -71,12 +70,36 @@ const App: React.FC = () => {
     setTimeout(() => setLoading(false), 500);
   }, []);
 
-  const handleCreateNew = () => {
-    // Reset to defaults
-    setInitialData(null);
-    history.pushState("", document.title, window.location.pathname + window.location.search);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  };
+  // SCROLL LOGIC: Smart scrolling depending on device
+  useEffect(() => {
+    if (!loading && initialData) {
+        const scrollToTarget = () => {
+            const isMobile = window.innerWidth < 1024;
+            const cardPreview = document.getElementById('card-preview');
+            const builderSection = document.getElementById('builder');
+            
+            if (isMobile && cardPreview) {
+                 // On mobile, the card is at the bottom. Scroll to center it in viewport so users see the gift immediately.
+                 cardPreview.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            } else if (builderSection) {
+                 // On desktop, align the section top. The card is visible in the right column.
+                 builderSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+        };
+
+        // Trigger sequence to ensure scroll happens after layout settles
+        scrollToTarget();
+        const t1 = setTimeout(scrollToTarget, 500);
+        const t2 = setTimeout(scrollToTarget, 1000);
+        const t3 = setTimeout(scrollToTarget, 2000); // Late check for ad loading
+        
+        return () => {
+            clearTimeout(t1);
+            clearTimeout(t2);
+            clearTimeout(t3);
+        };
+    }
+  }, [loading, initialData]);
 
   const t = translations[lang];
 
@@ -88,20 +111,6 @@ const App: React.FC = () => {
       );
   }
 
-  // SHARED LINK VIEW (RECEIVER EXPERIENCE)
-  // Replaces the standard landing page when a card data is present in URL
-  if (initialData) {
-      return (
-          <ReceiverView 
-             data={initialData} 
-             onCreateNew={handleCreateNew} 
-             t={t.receiver}
-             lang={lang}
-          />
-      );
-  }
-
-  // DEFAULT VIEW (BUILDER / LANDING PAGE)
   return (
     <div className={`min-h-screen bg-gradient-to-b ${activeTheme.gradient} text-white transition-all duration-1000`}>
       <Hero t={t.hero} lang={lang} setLang={setLang} />

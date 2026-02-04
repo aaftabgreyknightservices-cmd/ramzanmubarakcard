@@ -446,6 +446,7 @@ const CardBuilder: React.FC<Props> = ({ onThemeChange, activeTheme, t, lang, ini
         {/* FLOAT ANIMATION CONTAINER */}
         <div className="animate-float w-full flex justify-center">
             <div 
+                id="card-preview"
                 className="perspective-1000 w-full max-w-[420px]" 
                 onMouseMove={handleMouseMove} 
                 onTouchMove={handleTouchMove}
