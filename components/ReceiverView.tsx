@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence, useMotionValue, useSpring, useTransform } from 'framer-motion';
-import { PenTool, Check, Volume2, VolumeX, Lock, Star, Moon, Sparkles } from 'lucide-react';
+import { PenTool, Check, Volume2, VolumeX, Lock, Moon } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { CardData, THEMES, BLESSINGS } from '../types';
 import { Language } from '../translations';
@@ -50,6 +50,13 @@ const GoldenEnvelope = ({ from, onClick, isOpening, t }: { from: string, onClick
             </div>
         </div>
         <div className="absolute -inset-20 bg-yellow-400/20 blur-[60px] -z-10 animate-pulse"></div>
+        
+        {/* Envelope Decor */}
+        <img 
+            src="https://res.cloudinary.com/dxw5mimqj/image/upload/v1770239783/Ramadan_Lantern_xeufdp.png" 
+            className="absolute -right-4 top-10 w-12 opacity-80"
+            alt="lantern"
+        />
       </motion.div>
       {!isOpening && (
           <motion.p 
@@ -72,7 +79,6 @@ const ReceiverView: React.FC<Props> = ({ data, onCreateNew, t, lang }) => {
   const [saidAmeen, setSaidAmeen] = useState(false);
   const [isMuted, setIsMuted] = useState(true);
   
-  // Ensure default values to prevent blank cards
   const senderName = data.from || "A Friend";
   const theme = THEMES.find(t => t.id === data.themeId) || THEMES[0];
   
@@ -146,7 +152,6 @@ const ReceiverView: React.FC<Props> = ({ data, onCreateNew, t, lang }) => {
         <span className="text-[10px] md:text-xs font-bold uppercase tracking-wider text-white/90">{isMuted ? t.playMusic : t.soundOn}</span>
       </button>
 
-      {/* SMARTLINK FLOATING BUTTON */}
       <SmartLinkButton />
 
       <div className={`fixed inset-0 bg-white z-50 pointer-events-none transition-opacity ease-in-out ${flash ? 'opacity-100 duration-500' : 'opacity-0 duration-[2000ms]'}`} />
@@ -156,6 +161,8 @@ const ReceiverView: React.FC<Props> = ({ data, onCreateNew, t, lang }) => {
              <div className="w-[200vw] h-[200vw] bg-gradient-to-r from-transparent via-yellow-400/20 to-transparent rotate-45 blur-[100px] animate-pulse"></div>
          </motion.div>
       )}
+
+      {/* CLEANED UP BACKGROUND - REMOVED DOME/STARS */}
 
       <AnimatePresence mode="wait">
         {!revealed && (
@@ -178,11 +185,6 @@ const ReceiverView: React.FC<Props> = ({ data, onCreateNew, t, lang }) => {
                 <div className="inline-block px-4 py-1.5 rounded-full bg-white/5 border border-white/10 text-yellow-400 text-[10px] md:text-sm font-black tracking-[0.3em] uppercase backdrop-blur-xl shadow-lg">{t.unlocked}</div>
              </motion.div>
 
-             {/* 
-                CARD CONTAINER - LAYOUT FIX
-                Use min-h to allow content to grow.
-                Use flex-col to justify-between correctly.
-             */}
              <motion.div 
                 ref={cardRef} 
                 style={{ rotateX, rotateY, transformStyle: "preserve-3d" }} 
@@ -195,16 +197,13 @@ const ReceiverView: React.FC<Props> = ({ data, onCreateNew, t, lang }) => {
                     <Moon size={100} className="text-yellow-400 drop-shadow-[0_0_30px_rgba(253,224,71,0.4)]" fill="currentColor" stroke="none" />
                 </motion.div>
 
-                {/* Content Container - Forces footer to bottom */}
+                {/* Content Container */}
                 <div className="relative z-20 flex-1 flex flex-col justify-between">
-                    
-                    {/* Header Section */}
                     <div className="space-y-4 mt-2">
                         <span className="text-yellow-400 font-black tracking-[0.4em] uppercase text-[10px] md:text-xs drop-shadow-md">Holy Ramzan 2026</span>
                         <div className="arabic text-4xl md:text-6xl font-bold mt-2 drop-shadow-2xl text-white relative z-10">رمضان مبارك</div>
                     </div>
 
-                    {/* Middle Section - The Wish */}
                     <div className="py-8 space-y-6 md:space-y-8 flex-1 flex flex-col justify-center">
                         <div className="space-y-2">
                              <p className="text-gray-400 text-[10px] md:text-xs font-black uppercase tracking-[0.5em]">A Special Dua For</p>
@@ -212,7 +211,6 @@ const ReceiverView: React.FC<Props> = ({ data, onCreateNew, t, lang }) => {
                         </div>
 
                         <div className="relative">
-                            <Star className="absolute -top-6 left-1/2 -translate-x-1/2 text-yellow-400/50 w-6 h-6 animate-spin-slow" />
                             <p className="text-[#F9FAFB] italic text-lg sm:text-xl md:text-2xl leading-relaxed px-2 font-['Playfair_Display'] font-medium drop-shadow-lg break-words">
                                 "{data.wish}"
                             </p>
@@ -228,7 +226,6 @@ const ReceiverView: React.FC<Props> = ({ data, onCreateNew, t, lang }) => {
                         )}
                     </div>
 
-                    {/* Footer Section - Sender Name - Guaranteed Visibility */}
                     <div className="mt-auto pt-6 flex flex-col items-center pb-2">
                         <p className="text-[9px] md:text-[11px] text-gray-400 font-black uppercase tracking-[0.3em] mb-3">With Pure Heart,</p>
                         <div className="relative group/name">
@@ -252,7 +249,6 @@ const ReceiverView: React.FC<Props> = ({ data, onCreateNew, t, lang }) => {
                                     {senderName}
                                 </motion.span>
                              </motion.p>
-                             
                              <motion.div 
                                 initial={{ width: 0, opacity: 0 }}
                                 animate={{ width: "70%", opacity: 0.8 }}
@@ -273,9 +269,10 @@ const ReceiverView: React.FC<Props> = ({ data, onCreateNew, t, lang }) => {
                   </button>
              </motion.div>
              
-             {/* CONTEXTUAL AD PLACEMENT: Below primary action buttons */}
              <NativeAdUnit />
              <DisplayAdUnit size="medium" />
+
+             {/* REMOVED FOOTER DECOR */}
 
           </motion.div>
         )}

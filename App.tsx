@@ -142,6 +142,7 @@ const App: React.FC = () => {
             activeTheme={activeTheme}
             t={t}
             lang={lang}
+            setLang={setLang}
             initialData={initialData}
           />
         </div>

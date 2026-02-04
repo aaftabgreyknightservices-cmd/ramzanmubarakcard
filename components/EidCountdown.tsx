@@ -1,7 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Clock, Calendar, Moon, BookOpen, Sparkles, Flame, Info } from 'lucide-react';
 import { Language } from '../translations';
 
 const TARGET_DATE = new Date('2026-02-17T18:00:00').getTime();
@@ -31,16 +30,16 @@ const TimeUnit = ({ value, label }: { value: number; label: string }) => (
   </div>
 );
 
-const PrepCard = ({ icon, title, desc, delay }: { icon: React.ReactNode, title: string, desc: string, delay: number }) => (
+const PrepCard = ({ img, title, desc, delay }: { img: string, title: string, desc: string, delay: number }) => (
     <motion.div 
         initial={{ opacity: 0, y: 20 }}
         whileInView={{ opacity: 1, y: 0 }}
         transition={{ delay }}
-        className="glass p-5 rounded-2xl border border-white/5 hover:border-yellow-400/30 transition-colors group"
+        className="glass p-5 rounded-2xl border border-white/5 hover:border-yellow-400/30 transition-colors group relative overflow-hidden"
     >
-        <div className="flex items-start gap-4">
-            <div className="p-3 bg-yellow-400/10 rounded-xl text-yellow-400 group-hover:scale-110 transition-transform duration-300">
-                {icon}
+        <div className="flex items-center gap-4 relative z-10">
+            <div className="w-12 h-12 flex-shrink-0">
+                <img src={img} className="w-full h-full object-contain drop-shadow-lg group-hover:scale-110 transition-transform duration-300" alt="icon" />
             </div>
             <div>
                 <h4 className="font-bold text-white text-sm md:text-base mb-1">{title}</h4>
@@ -74,15 +73,30 @@ const EidCountdown: React.FC<Props> = ({ t, lang }) => {
   }, []);
 
   return (
-    <section className="relative py-12 md:py-20 px-4 overflow-hidden border-b border-white/5">
-        <div className="max-w-5xl mx-auto">
+    <section className="relative py-12 md:py-20 px-4 overflow-hidden border-b border-white/5 bg-black/20">
+        
+        {/* Decorative Assets */}
+        <motion.img 
+            src="https://res.cloudinary.com/dxw5mimqj/image/upload/v1770239956/Ramadan_Alarm_fk7euc.png"
+            className="absolute top-10 left-[-20px] md:left-10 w-24 md:w-32 opacity-80 z-0"
+            animate={{ rotate: [0, 5, -5, 0] }}
+            transition={{ duration: 5, repeat: Infinity, ease: 'easeInOut' }}
+        />
+        <motion.img 
+            src="https://res.cloudinary.com/dxw5mimqj/image/upload/v1770239651/Ramadan_Drum_tnrvgo.png"
+            className="absolute bottom-10 right-[-20px] md:right-10 w-28 md:w-40 opacity-80 z-0"
+            animate={{ y: [0, -10, 0] }}
+            transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut' }}
+        />
+
+        <div className="max-w-5xl mx-auto relative z-10">
             <motion.div 
                 initial={{ opacity: 0, y: 20 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 className="flex flex-col items-center justify-center gap-4 mb-10 text-center"
             >
                 <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-yellow-400/10 border border-yellow-400/20 text-yellow-400 text-[10px] md:text-xs font-bold uppercase tracking-widest shadow-[0_0_20px_rgba(255,209,102,0.1)]">
-                    <Calendar size={12} />
+                    <img src="https://res.cloudinary.com/dxw5mimqj/image/upload/v1770239649/Ramadan_Calendar_mktnio.png" className="w-4 h-4" />
                     <span>{t.dates}</span>
                 </div>
                 
@@ -103,9 +117,9 @@ const EidCountdown: React.FC<Props> = ({ t, lang }) => {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6 relative z-10">
-                <PrepCard delay={0.1} icon={<Moon size={24} />} title={t.cards[0].title} desc={t.cards[0].desc} />
-                <PrepCard delay={0.2} icon={<Flame size={24} />} title={t.cards[1].title} desc={t.cards[1].desc} />
-                <PrepCard delay={0.3} icon={<Info size={24} />} title={t.cards[2].title} desc={t.cards[2].desc} />
+                <PrepCard delay={0.1} img="https://res.cloudinary.com/dxw5mimqj/image/upload/v1770240236/Crescent_Moon_jmtxds.png" title={t.cards[0].title} desc={t.cards[0].desc} />
+                <PrepCard delay={0.2} img="https://res.cloudinary.com/dxw5mimqj/image/upload/v1770239642/Suhoor_Time_n2ng0o.png" title={t.cards[1].title} desc={t.cards[1].desc} />
+                <PrepCard delay={0.3} img="https://res.cloudinary.com/dxw5mimqj/image/upload/v1770240072/Iftar_Time_uvtfv8.png" title={t.cards[2].title} desc={t.cards[2].desc} />
             </div>
 
              <motion.p 
