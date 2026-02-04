@@ -37,40 +37,36 @@ const App: React.FC = () => {
   }, [lang]);
 
   useEffect(() => {
-    // Robust Hash Parsing
-    const rawHash = window.location.hash;
+    // V4 Hash Parsing Protocol
+    const rawHash = window.location.hash.substring(1); // Remove #
     
-    // Sometimes social apps add ?query=params after the hash, clean it
-    const cleanHash = rawHash.split('?')[0]; 
-    
-    let dataParam = null;
+    if (rawHash) {
+       // Format: SenderName.Code OR Sender_Name.Code
+       // We split by the LAST dot, as sender name might contain dots (though sanitized to _ usually)
+       const lastDotIndex = rawHash.lastIndexOf('.');
+       
+       let sender = "";
+       let code = "";
 
-    if (cleanHash) {
-       if (cleanHash.includes('data=')) {
-          // Legacy support
-          dataParam = cleanHash.split('data=')[1];
-       } else if (cleanHash.length > 2) {
-          // New Short Link Format: #Name.Code OR just #Code
-          // We look for the LAST part after a dot, or the whole thing if no dot
-          const parts = cleanHash.substring(1).split('.');
-          
-          // Logic: The data code is always the last segment
-          dataParam = parts[parts.length - 1];
+       if (lastDotIndex !== -1) {
+           sender = rawHash.substring(0, lastDotIndex);
+           code = rawHash.substring(lastDotIndex + 1);
+       } else {
+           // Fallback for legacy or unknown format: Treat whole hash as code
+           code = rawHash;
        }
-    }
 
-    if (dataParam) {
-      console.log("Attempting to decompress:", dataParam);
-      const decoded = decompressData(dataParam);
-      if (decoded) {
-          console.log("Decompression successful:", decoded);
-          setInitialData(decoded);
-          setIsReceiverMode(true);
-          const theme = THEMES.find(t => t.id === decoded.themeId) || THEMES[0];
-          setActiveTheme(theme);
-      } else {
-        console.warn("Decompression failed or returned null");
-      }
+       if (code) {
+          console.log("Decoding:", { sender, code });
+          const decoded = decompressData(code, sender);
+          
+          if (decoded) {
+              setInitialData(decoded);
+              setIsReceiverMode(true);
+              const theme = THEMES.find(t => t.id === decoded.themeId) || THEMES[0];
+              setActiveTheme(theme);
+          }
+       }
     }
     setTimeout(() => setLoading(false), 500);
   }, []);

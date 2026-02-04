@@ -163,13 +163,17 @@ const CardBuilder: React.FC<Props> = ({ onThemeChange, activeTheme, t, lang }) =
 
     const payload = { ...formData, to: "You", relationship: "Friend", themeId: activeTheme.id };
     
-    // Compress Data using V3 Algorithm (Result is ~10-15 chars for preset wishes)
+    // --- V4 GENERATION ---
+    // 1. Get the content code (2-3 chars usually)
     const code = compressData(payload);
     
-    // Construct Short URL (Stateless)
-    // We remove the name prefix to keep it "very very short" as requested.
+    // 2. Format Sender Name
+    // Replace spaces/dots with underscores to keep URL clean
+    const safeSender = formData.from.trim().replace(/[\s.]+/g, '_');
+    
+    // 3. Construct URL: #Sender.Code
     const baseUrl = window.location.origin + window.location.pathname;
-    const shortUrl = `${baseUrl}#${code}`;
+    const shortUrl = `${baseUrl}#${safeSender}.${code}`;
     
     setShareUrl(shortUrl);
     setIsGenerating(false);

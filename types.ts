@@ -82,133 +82,108 @@ export const BLESSINGS = [
   "May your fasts be a shield for your soul and your prayers a bridge."
 ];
 
-// Helper: Normalize text to catch presets regardless of punctuation/spacing
+// Helper: Normalize text
 const normalize = (str: string) => str.toLowerCase().replace(/[^a-z0-9]/g, '');
 
-// --- HYPER SHORT LINK COMPRESSION (V3 Custom Packing) ---
+// --- V4 PROTOCOL: BITWISE PACKING ---
+// Result Code Length: 2-3 characters for presets.
 
 export const compressData = (data: CardData): string => {
   try {
-    // 1. Pack Theme (0-Z)
-    const tIdx = THEMES.findIndex(t => t.id === data.themeId);
-    const tChar = tIdx !== -1 ? tIdx.toString(36) : '0';
+    // 1. Map Theme (0-3)
+    let tIdx = THEMES.findIndex(t => t.id === data.themeId);
+    if (tIdx === -1) tIdx = 0;
 
-    // 2. Pack Blessing (0-Z or 'z' for none)
-    const bChar = data.includeBlessing ? (data.blessingIndex || 0).toString(36) : 'z';
+    // 2. Map Blessing (0-5)
+    // 0 = No Blessing, 1..5 = Blessing Index + 1
+    const bVal = data.includeBlessing ? (data.blessingIndex || 0) + 1 : 0;
 
-    // 3. Pack Wish (0-Z for preset, 'x' for custom)
+    // 3. Map Wish (0-9 or Custom)
     const normWish = normalize(data.wish);
-    const pIdx = PRESET_WISHES.findIndex(w => normalize(w) === normWish);
-    const wChar = pIdx !== -1 ? pIdx.toString(36) : 'x';
+    const wIdx = PRESET_WISHES.findIndex(w => normalize(w) === normWish);
 
-    // 4. Sanitize Sender
-    const safeFrom = data.from.replace(/\|/g, ' ').trim();
-
-    // V3 Format: 3[Theme][Blessing][Wish][Sender]...
-    // If custom wish: ...[Sender]|[CustomWish]
-    let payload = `3${tChar}${bChar}${wChar}${safeFrom}`;
-    
-    if (wChar === 'x') {
-        payload += `|${data.wish}`;
+    if (wIdx !== -1) {
+        // --- PRESET PATH (Bit Packing) ---
+        // Formula: Theme + (Blessing * 4) + (Wish * 24)
+        // Max Value: 3 + (5*4) + (9*24) = 3 + 20 + 216 = 239
+        // 239 in Base36 is "6n". Just 2 chars!
+        const packedValue = tIdx + (bVal * 4) + (wIdx * 24);
+        return packedValue.toString(36);
+    } else {
+        // --- CUSTOM PATH (Fallback) ---
+        // We can't compress custom text to 2 chars, but we can keep it clean.
+        // Prefix with '~' to denote custom.
+        // Encode Theme & Blessing in 1 char: T + (B*4) -> Base36
+        const configVal = tIdx + (bVal * 4);
+        const configChar = configVal.toString(36);
+        
+        // Use URI Encoding for readability or LZString if huge
+        const safeWish = encodeURIComponent(data.wish).replace(/%20/g, '+');
+        return `~${configChar}.${safeWish}`;
     }
-    
-    // Result is usually 8-15 chars for presets
-    return LZString.compressToEncodedURIComponent(payload);
   } catch (e) {
-    console.error("Compression Error", e);
-    return "";
+    console.error("V4 Compression Error", e);
+    return "0"; // Default fallback
   }
 };
 
-export const decompressData = (str: string): CardData | null => {
-  if (!str) return null;
-
+export const decompressData = (code: string, senderName: string = "A Friend"): CardData => {
   try {
-    // Attempt V3 Decompression
-    const decompressed = LZString.decompressFromEncodedURIComponent(str);
-    
-    if (decompressed && decompressed.startsWith('3')) {
-        // Parse V3 Header
-        const tIdx = parseInt(decompressed[1], 36);
-        const bChar = decompressed[2];
-        const wChar = decompressed[3];
-        const rest = decompressed.substring(4);
+    let tIdx = 0;
+    let bVal = 1; // Default to first blessing included
+    let wish = PRESET_WISHES[0];
 
-        let from = rest;
-        let wish = "";
+    // Decode Sender Name (Restore spaces)
+    const safeSender = senderName.replace(/_/g, ' ').replace(/-/g, ' ') || "A Friend";
 
-        if (wChar === 'x') {
-            // Custom Wish
-            const parts = rest.split('|');
-            from = parts[0];
-            wish = parts.slice(1).join('|');
-        } else {
-            // Preset Wish
-            const wIdx = parseInt(wChar, 36);
+    if (code.startsWith('~')) {
+        // --- CUSTOM PATH ---
+        // Format: ~[ConfigChar].[WishText]
+        const parts = code.substring(1).split('.');
+        const configChar = parts[0];
+        const wishText = parts.slice(1).join('.'); // Rejoin if wish had dots
+
+        const configVal = parseInt(configChar, 36);
+        tIdx = configVal % 4;
+        bVal = Math.floor(configVal / 4);
+        
+        wish = decodeURIComponent(wishText.replace(/\+/g, '%20'));
+    } else {
+        // --- PRESET PATH ---
+        const val = parseInt(code, 36);
+        if (!isNaN(val)) {
+            // Reverse Formula: Theme + (Blessing * 4) + (Wish * 24)
+            tIdx = val % 4;
+            const remaining = Math.floor(val / 4);
+            bVal = remaining % 6;
+            const wIdx = Math.floor(remaining / 6);
+            
             wish = PRESET_WISHES[wIdx] || PRESET_WISHES[0];
         }
-
-        return {
-            from: from || "A Friend",
-            to: 'You',
-            relationship: 'Friend',
-            wish: wish || PRESET_WISHES[0],
-            themeId: THEMES[tIdx]?.id || THEMES[0].id,
-            includeBlessing: bChar !== 'z',
-            blessingIndex: bChar !== 'z' ? parseInt(bChar, 36) : 0,
-            addSurprise: false
-        };
     }
 
-    // --- Legacy V2 Fallback ---
-    if (decompressed && decompressed.startsWith('v2|')) {
-        const parts = decompressed.split('|');
-        if (parts.length < 4) return null;
-        const themeIdx = parseInt(parts[1]);
-        const blessIdxStr = parts[2];
-        const from = parts[3];
-        let wish = parts.slice(4).join('|');
-        if (wish.startsWith('_')) {
-            const wIdx = parseInt(wish.substring(1));
-            if (!isNaN(wIdx) && PRESET_WISHES[wIdx]) wish = PRESET_WISHES[wIdx];
-        }
-        return {
-            from: from || "A Friend",
-            to: 'You',
-            relationship: 'Friend',
-            wish: wish || PRESET_WISHES[0],
-            themeId: THEMES[themeIdx]?.id || THEMES[0].id,
-            includeBlessing: blessIdxStr !== '',
-            blessingIndex: blessIdxStr !== '' ? parseInt(blessIdxStr) : 0,
-            addSurprise: false
-        };
-    }
+    return {
+        from: safeSender,
+        to: 'You',
+        relationship: 'Friend',
+        wish: wish,
+        themeId: THEMES[tIdx]?.id || THEMES[0].id,
+        includeBlessing: bVal > 0,
+        blessingIndex: bVal > 0 ? bVal - 1 : 0,
+        addSurprise: false
+    };
 
-    // --- Legacy V1 Fallback ---
-    let base64 = str.replace(/-/g, '+').replace(/_/g, '/');
-    while (base64.length % 4) base64 += '=';
-    const encoded = atob(base64);
-    const json = decodeURIComponent(Array.prototype.map.call(encoded, 
-      (c: string) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)
-    ).join(''));
-    const arr = JSON.parse(json);
-    if (Array.isArray(arr) && arr[0] === 1) {
-       const [_, themeIdx, blessIdx, from, wish] = arr;
-       return {
-         from: from || "A Friend",
-         to: 'You',
-         relationship: 'Friend',
-         wish: wish || PRESET_WISHES[0],
-         themeId: THEMES[themeIdx]?.id || THEMES[0].id,
-         includeBlessing: blessIdx !== -1,
-         blessingIndex: blessIdx === -1 ? 0 : blessIdx,
-         addSurprise: false
-       };
-    }
-    
-    return null;
   } catch (e) {
-    console.error("Decompression Error", e);
-    return null;
+    console.error("V4 Decompression Error", e);
+    return {
+        from: senderName || "A Friend",
+        to: "You",
+        relationship: "Friend",
+        wish: PRESET_WISHES[0],
+        themeId: THEMES[0].id,
+        includeBlessing: true,
+        blessingIndex: 0,
+        addSurprise: false
+    };
   }
 };
