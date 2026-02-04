@@ -8,7 +8,7 @@ export const translations = {
       titlePre: "Ramzan is",
       titleHighlight: "Coming Soon 🌙",
       subtitle: "Create a Personalized Dua Card. One Tap to Share. Infinite Blessings.",
-      cta: "Create My Gift Card"
+      cta: "Create Your Wish Card"
     },
     countdown: {
       dates: "Evening of Tue, 17 Feb – Thu, 19 Mar, 2026",
@@ -93,7 +93,7 @@ export const translations = {
       titlePre: "رمضان",
       titleHighlight: "کی آمد ہے 🌙",
       subtitle: "اپنی ذاتی دعا کارڈ بنائیں۔ ایک کلک میں شیئر کریں۔ بے انتہا برکتیں۔",
-      cta: "اپنا تحفہ کارڈ بنائیں"
+      cta: "اپنا وش کارڈ بنائیں"
     },
     countdown: {
       dates: "شام منگل، 17 فروری – جمعرات، 19 مارچ، 2026",
@@ -177,7 +177,7 @@ export const translations = {
       titlePre: "Ramzan Ki",
       titleHighlight: "Aamad Hai 🌙",
       subtitle: "Apna Zaati Dua Card Banayein. Ek Tap Mein Share Karein. Be-inteha Barkatein.",
-      cta: "Apna Gift Card Banayein"
+      cta: "Apna Wish Card Banayein"
     },
     countdown: {
       dates: "Shaam Mangal, 17 Feb – Jumeraat, 19 Mar, 2026",
@@ -252,7 +252,7 @@ export const translations = {
         "Main dua karta hoon ke aap ko aisi khushi milay jo kabhi khatam na ho.",
         "Allah aap ko un logon mein shamil karay jin se Woh mohabbat karta hai.",
         "Aap ki zindagi Quran ke noor se munawwar ho jaye.",
-        "Allah aap ko duniya aur akhirat ki tamam bhalaiyan ata farmaye."
+        "Allah aap ko duniya aur akhirat ki तमाम bhalaiyan ata farmaye."
     ]
   },
   ar: {
@@ -261,7 +261,7 @@ export const translations = {
       titlePre: "رمضان",
       titleHighlight: "قادم قريباً 🌙",
       subtitle: "اصنع بطاقة دعاء مخصصة. بضغطة واحدة للمشاركة. بركات لا حصر لها.",
-      cta: "اصنع بطاقة هديتي"
+      cta: "اصنع بطاقة أمنيتك"
     },
     countdown: {
       dates: "مساء الثلاثاء 17 فبراير – الخميس 19 مارس 2026",
@@ -345,7 +345,7 @@ export const translations = {
       titlePre: "रमज़ान",
       titleHighlight: "आ रहा है 🌙",
       subtitle: "अपना ज़ाती दुआ कार्ड बनाएं। एक टैप में शेयर करें। बेइंतहा बरकतें।",
-      cta: "अपना गिफ्ट कार्ड बनाएं"
+      cta: "अपना विश कार्ड बनाएं"
     },
     countdown: {
       dates: "शाम मंगल, 17 फर – जुमेरात, 19 मार्च, 2026",

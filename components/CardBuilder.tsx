@@ -530,11 +530,31 @@ const CardBuilder: React.FC<Props> = ({ onThemeChange, activeTheme, t, lang, ini
               </motion.div>
             </div>
         </div>
-        <div className="mt-8 md:mt-14 flex flex-col items-center gap-4">
+        
+        {/* ADDED NEW BUTTON HERE */}
+        <div className="mt-8 md:mt-14 flex flex-col items-center gap-6">
           <div className="flex items-center gap-3 text-gray-400 text-xs md:text-sm font-bold bg-white/5 px-6 md:px-8 py-3 md:py-4 rounded-full border border-white/10 shadow-lg backdrop-blur-xl">
             <Sparkles size={16} className="text-yellow-400 animate-pulse" />
             <span>Tilt device to experience 3D depth</span>
           </div>
+
+          <motion.button
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            onClick={() => {
+                const builderSection = document.getElementById('builder');
+                if (builderSection) builderSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }}
+            className="group relative px-8 py-4 bg-yellow-400 text-black font-black rounded-full shadow-[0_0_30px_rgba(255,209,102,0.4)] flex items-center gap-3 uppercase tracking-widest text-sm hover:shadow-[0_0_50px_rgba(255,209,102,0.6)] transition-all overflow-hidden"
+          >
+             <span className="relative z-10 flex items-center gap-2">
+                 <Wand2 size={18} />
+                 {t.hero?.cta || "Create Your Wish Card"}
+             </span>
+             <motion.div 
+                className="absolute inset-0 bg-white/30 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-500"
+              />
+          </motion.button>
         </div>
       </div>
       <style>{`
