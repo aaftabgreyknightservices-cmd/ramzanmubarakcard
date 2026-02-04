@@ -63,26 +63,42 @@ export const THEMES: CardTheme[] = [
 
 export const PRESET_WISHES = [
   "May this Ramzan bring you peace, joy, and endless blessings.",
-  "May this Ramzan shine the light of guidance in your home."
+  "May this Ramzan shine the light of guidance in your home.",
+  "May this Ramzan fill your month with mercy and your heart with profound gratitude.",
+  "May this Ramzan be the month Allah accepts your fasts and answers your secret prayers.",
+  "May this Ramzan turn your heart into a vessel of Noor and fill your days with Barakah.",
+  "May this Ramzan heal what is broken within you and strengthen what is weak.",
+  "May this Ramzan bring you strength in every suhoor and peace in every iftar.",
+  "May this Ramzan become the beautiful turning point you have been waiting for.",
+  "May this Ramzan open the gates of Heaven for you and ensure the gates of Mercy never close.",
+  "May this Ramzan grant you 30 days of clemency, 720 hours of enlightenment, and 43,200 minutes of joy."
 ];
 
 export const BLESSINGS = [
   "May the light of this month find the cracks in your heart.",
-  "I pray that every silent struggle you carry is answered."
+  "I pray that every silent struggle you carry is answered.",
+  "May your home be a sanctuary where angels love to visit.",
+  "I asked Allah today to protect your smile and grant you serenity.",
+  "May your fasts be a shield for your soul and your prayers a bridge."
 ];
 
-// --- HYPER SHORT LINK COMPRESSION (V2) ---
+// --- HYPER SHORT LINK COMPRESSION (V2.1 Optimized) ---
 
 export const compressData = (data: CardData): string => {
   try {
     const tIdx = THEMES.findIndex(t => t.id === data.themeId);
     const themeIdx = tIdx >= 0 ? tIdx : 0;
     const blessIdx = data.includeBlessing ? (data.blessingIndex || 0) : ''; 
+    const safeFrom = data.from.replace(/\|/g, '-'); // Sanitize delimiter
 
-    // V2 Format: v2|ThemeIdx|BlessIdx|From|Wish
-    // We remove all JSON syntax ("" : {} []) to save massive space.
-    // LZString then compresses this text stream efficiently.
-    const payload = `v2|${themeIdx}|${blessIdx}|${data.from}|${data.wish}`;
+    // OPTIMIZATION: Check if wish is a preset
+    // If exact match, send index prefixed with '_' (e.g. _0, _5)
+    // If custom, send full text
+    const wishIdx = PRESET_WISHES.indexOf(data.wish);
+    const compressedWish = wishIdx !== -1 ? `_${wishIdx}` : data.wish;
+
+    // V2 Format: v2|ThemeIdx|BlessIdx|From|Wish(or _Index)
+    const payload = `v2|${themeIdx}|${blessIdx}|${safeFrom}|${compressedWish}`;
     
     return LZString.compressToEncodedURIComponent(payload);
   } catch (e) {
@@ -92,24 +108,34 @@ export const compressData = (data: CardData): string => {
 };
 
 export const decompressData = (str: string): CardData | null => {
+  if (!str) return null;
+
   try {
     // 1. Try V2 Decompression (LZString)
     const decompressed = LZString.decompressFromEncodedURIComponent(str);
     
     if (decompressed && decompressed.startsWith('v2|')) {
         const parts = decompressed.split('|');
-        // Format: v2 | themeIdx | blessIdx | from | wish
-        // Note: Wish might contain '|', so we join the rest
+        if (parts.length < 4) return null;
+
         const themeIdx = parseInt(parts[1]);
         const blessIdxStr = parts[2];
         const from = parts[3];
-        const wish = parts.slice(4).join('|');
+        let wish = parts.slice(4).join('|');
+
+        // OPTIMIZATION: Restore preset wish from index
+        if (wish.startsWith('_')) {
+            const wIdx = parseInt(wish.substring(1));
+            if (!isNaN(wIdx) && PRESET_WISHES[wIdx]) {
+                wish = PRESET_WISHES[wIdx];
+            }
+        }
 
         return {
-            from: from,
+            from: from || "A Friend",
             to: 'You',
             relationship: 'Friend',
-            wish: wish,
+            wish: wish || PRESET_WISHES[0],
             themeId: THEMES[themeIdx]?.id || THEMES[0].id,
             includeBlessing: blessIdxStr !== '',
             blessingIndex: blessIdxStr !== '' ? parseInt(blessIdxStr) : 0,
@@ -117,8 +143,7 @@ export const decompressData = (str: string): CardData | null => {
         };
     }
 
-    // 2. Fallback to V1 (Base64 JSON) for old links
-    // Restore Base64 url-safety
+    // 2. Fallback to V1 (Base64 JSON) for legacy links
     let base64 = str.replace(/-/g, '+').replace(/_/g, '/');
     while (base64.length % 4) base64 += '=';
     
@@ -132,10 +157,10 @@ export const decompressData = (str: string): CardData | null => {
     if (Array.isArray(arr) && arr[0] === 1) {
        const [_, themeIdx, blessIdx, from, wish] = arr;
        return {
-         from,
+         from: from || "A Friend",
          to: 'You',
          relationship: 'Friend',
-         wish,
+         wish: wish || PRESET_WISHES[0],
          themeId: THEMES[themeIdx]?.id || THEMES[0].id,
          includeBlessing: blessIdx !== -1,
          blessingIndex: blessIdx === -1 ? 0 : blessIdx,
@@ -145,7 +170,7 @@ export const decompressData = (str: string): CardData | null => {
     
     return null;
   } catch (e) {
-    // console.error("Decompression Error", e);
+    console.error("Decompression Error", e);
     return null;
   }
 };

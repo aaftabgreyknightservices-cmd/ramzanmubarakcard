@@ -1,11 +1,12 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence, useMotionValue, useSpring, useTransform, useMotionTemplate } from 'framer-motion';
-import { Share2, Download, Copy, Check, Sparkles, RefreshCw, Send, Moon, Heart, ChevronLeft, ChevronRight, Shuffle, PenTool } from 'lucide-react';
+import { Share2, Download, Copy, Check, Sparkles, RefreshCw, Send, Moon, Heart, ChevronLeft, ChevronRight, Shuffle, PenTool, Link as LinkIcon, Wand2 } from 'lucide-react';
 import html2canvas from 'html2canvas';
 import { CardData, CardTheme, THEMES, compressData } from '../types';
 import { Language } from '../translations';
 import { NativeAdUnit, DisplayAdUnit } from './AdUnits';
+import { shortenUrl } from '../services/shortener';
 
 interface Props {
   onThemeChange: (theme: CardTheme) => void;
@@ -59,6 +60,10 @@ const CardBuilder: React.FC<Props> = ({ onThemeChange, activeTheme, t, lang }) =
   const [wishIndex, setWishIndex] = useState(0);
   const [isGenerating, setIsGenerating] = useState(false);
   const [shareUrl, setShareUrl] = useState('');
+  const [shortLink, setShortLink] = useState('');
+  const [customSlug, setCustomSlug] = useState('');
+  const [useShortener, setUseShortener] = useState(false);
+  
   const [copied, setCopied] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
   const cardRef = useRef<HTMLDivElement>(null);
@@ -154,41 +159,75 @@ const CardBuilder: React.FC<Props> = ({ onThemeChange, activeTheme, t, lang }) =
     setFormData({ ...formData, blessingIndex: random });
   };
 
-  const generateLink = () => {
+  const generateLink = async () => {
     setIsGenerating(true);
+    setShortLink(''); // Reset short link
+    
+    // Allow UI to breathe
+    await new Promise(resolve => setTimeout(resolve, 800));
+
+    const payload = { ...formData, to: "You", relationship: "Friend", themeId: activeTheme.id };
+    
+    // Compress Data
+    const code = compressData(payload);
+    
+    // 1. Determine the Slug (Signature)
+    // Use custom slug if provided, otherwise sanitize sender name
+    let slug = customSlug.trim() || formData.from.trim();
+    // Sanitize: allow letters, numbers, foreign chars, hyphens. Remove spaces/special symbols
+    slug = slug.replace(/\s+/g, '-').replace(/[^a-zA-Z0-9\u0600-\u06FF\u0900-\u097F-]/g, '');
+    
+    // Construct Long URL (Stateless)
+    const personalizedHash = slug ? `${slug}.${code}` : code;
+    const baseUrl = window.location.origin + window.location.pathname;
+    const longUrl = `${baseUrl}#${personalizedHash}`;
+    
+    setShareUrl(longUrl);
+
+    // 2. Attempt Shortening (If toggled)
+    if (useShortener) {
+        const shortened = await shortenUrl(longUrl, customSlug || undefined);
+        if (shortened) {
+            setShortLink(shortened);
+        }
+    }
+
+    setIsGenerating(false);
     setTimeout(() => {
-      const payload = { ...formData, to: "You", relationship: "Friend", themeId: activeTheme.id };
-      
-      // Compress Data for Short Link
-      const code = compressData(payload);
-      
-      // Personalized URL Structure: #Name.Code
-      // Sanitize name for URL (remove special chars, spaces to hyphens)
-      const cleanName = formData.from.trim().replace(/\s+/g, '-').replace(/[^a-zA-Z0-9\u0600-\u06FF\u0900-\u097F-]/g, '');
-      const personalizedHash = cleanName ? `${cleanName}.${code}` : code;
-      
-      const baseUrl = window.location.origin + window.location.pathname;
-      const url = `${baseUrl}#${personalizedHash}`;
-      
-      setShareUrl(url);
-      setIsGenerating(false);
-      setTimeout(() => {
         const shareEl = document.getElementById('share-controls');
         shareEl?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      }, 100);
-    }, 1200);
+    }, 100);
   };
 
+  const activeLink = shortLink || shareUrl;
+
   const copyToClipboard = () => {
-    navigator.clipboard.writeText(shareUrl);
+    navigator.clipboard.writeText(activeLink);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
+  };
+
+  const handleNativeShare = async () => {
+    const shareData = {
+        title: 'Ramzan Mubarak 🌙',
+        text: `A special 3D gift card from ${formData.from}. Open to reveal your blessing!`,
+        url: activeLink
+    };
+
+    if (navigator.share) {
+        try {
+            await navigator.share(shareData);
+        } catch (err) {
+            console.log("Share canceled");
+        }
+    } else {
+        copyToClipboard();
+    }
   };
 
   const downloadImage = async () => {
     if (!cardRef.current) return;
     
-    // Reset 3D transforms for a flat capture
     mouseX.set(0);
     mouseY.set(0);
 
@@ -196,42 +235,26 @@ const CardBuilder: React.FC<Props> = ({ onThemeChange, activeTheme, t, lang }) =
       try {
         const canvas = await html2canvas(cardRef.current!, {
           backgroundColor: null,
-          scale: 4, // High-res export
+          scale: 4,
           logging: false,
-          useCORS: true, // Crucial for any external assets
+          useCORS: true,
           allowTaint: true,
           onclone: (clonedDoc) => {
-            // --- EXPERT SANITIZATION PROTOCOL ---
-            
-            // 1. FIX "YOU" GOLDEN STRIPE OVERLAP
-            // The issue: bg-clip: text renders as a block behind text in html2canvas.
-            // The fix: Remove background-image entirely and use a solid gold color.
             const youText = clonedDoc.querySelector('.download-target-you') as HTMLElement;
             if (youText) {
-                // Completely strip the gradient classes and inline styles related to background
                 youText.style.backgroundImage = 'none';
                 youText.style.webkitBackgroundClip = 'initial';
                 youText.style.backgroundClip = 'initial';
                 youText.style.webkitTextFillColor = 'initial';
                 youText.classList.remove('text-transparent', 'bg-clip-text', 'bg-gradient-to-r');
-                
-                // Apply a premium gold effect using safer CSS properties
-                youText.style.color = '#FFD700'; // Pure Gold
+                youText.style.color = '#FFD700'; 
                 youText.style.textShadow = '0 2px 10px rgba(255, 215, 0, 0.5)';
             }
-
-            // 2. FIX NOISE TEXTURE (CORS/TAINT)
-            // The issue: External SVGs often fail to load or taint the canvas.
-            // The fix: Remove the image and replace with a safe CSS gradient.
             const noiseLayer = clonedDoc.querySelector('.download-noise-overlay') as HTMLElement;
             if (noiseLayer) {
                 noiseLayer.style.backgroundImage = 'none';
-                // Subtle radial gradient to keep texture without external assets
                 noiseLayer.style.background = 'radial-gradient(circle, rgba(255,255,255,0.05) 0%, transparent 80%)';
             }
-
-            // 3. ENFORCE CONTRAST
-            // Ensure the name at the bottom pops
             const senderName = clonedDoc.querySelector('.download-sender-name') as HTMLElement;
             if (senderName) {
                 senderName.style.textShadow = '0 2px 15px rgba(0,0,0,0.8)';
@@ -249,11 +272,6 @@ const CardBuilder: React.FC<Props> = ({ onThemeChange, activeTheme, t, lang }) =
     }, 100);
   };
 
-  const shareOnWhatsApp = () => {
-    const text = `*Ramzan Mubarak!* 🌙✨\n\n${shareUrl}`;
-    window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
-  };
-
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-16 items-start">
       <motion.div 
@@ -263,6 +281,7 @@ const CardBuilder: React.FC<Props> = ({ onThemeChange, activeTheme, t, lang }) =
         className="glass p-6 md:p-10 rounded-[2.5rem] space-y-8 border-white/10 shadow-2xl"
       >
         <div className="space-y-10">
+          {/* SENDER INPUT */}
           <div className="relative group">
                <div className="absolute -inset-1 bg-gradient-to-r from-yellow-500/20 via-yellow-200/20 to-yellow-500/20 rounded-3xl blur opacity-30 group-focus-within:opacity-100 transition-opacity duration-700"></div>
                <div className="relative bg-black/40 border border-yellow-400/30 rounded-3xl p-6 md:p-8 flex flex-col items-center gap-4 shadow-[inset_0_2px_15px_rgba(0,0,0,0.5)]">
@@ -285,6 +304,42 @@ const CardBuilder: React.FC<Props> = ({ onThemeChange, activeTheme, t, lang }) =
                </div>
           </div>
 
+          {/* CUSTOM LINK SLUG & SHORTENER TOGGLE */}
+          <div className="bg-white/5 rounded-2xl p-4 border border-white/10 space-y-4">
+               <div className="flex items-center justify-between">
+                   <div className="flex items-center gap-2 text-gray-300">
+                       <LinkIcon size={14} />
+                       <span className="text-xs font-bold uppercase tracking-wider">Customize Link</span>
+                   </div>
+                   <label className="flex items-center gap-2 cursor-pointer group">
+                       <span className="text-[10px] text-gray-500 group-hover:text-yellow-400 transition-colors">Make it Short</span>
+                       <input 
+                         type="checkbox" 
+                         checked={useShortener}
+                         onChange={(e) => setUseShortener(e.target.checked)}
+                         className="accent-yellow-400 w-4 h-4"
+                       />
+                   </label>
+               </div>
+               
+               <div className="flex items-center gap-2 bg-black/30 rounded-xl px-3 py-2 border border-white/5 focus-within:border-yellow-400/40 transition-colors">
+                   <span className="text-gray-500 text-xs select-none">.../ #</span>
+                   <input 
+                     type="text"
+                     placeholder={formData.from ? formData.from.replace(/\s+/g, '-') : "your-name"}
+                     value={customSlug}
+                     onChange={(e) => setCustomSlug(e.target.value)}
+                     className="bg-transparent flex-1 outline-none text-sm text-yellow-100 placeholder:text-gray-600"
+                   />
+               </div>
+               {useShortener && (
+                   <p className="text-[9px] text-gray-500 italic">
+                      Note: Generates a TinyURL. Requires internet connection.
+                   </p>
+               )}
+          </div>
+
+          {/* WISH INPUT */}
           <div>
             <label className="block text-xs font-bold text-gray-500 uppercase tracking-widest mb-2 px-1">
                 {t.builder.inputs.wishLabel}
@@ -309,6 +364,7 @@ const CardBuilder: React.FC<Props> = ({ onThemeChange, activeTheme, t, lang }) =
           </div>
         </div>
 
+        {/* THEMES */}
         <div>
           <label className="block text-xs font-bold text-gray-500 uppercase tracking-widest mb-4 px-1">{t.builder.inputs.themeLabel}</label>
           <div className="grid grid-cols-4 gap-3">
@@ -327,6 +383,7 @@ const CardBuilder: React.FC<Props> = ({ onThemeChange, activeTheme, t, lang }) =
           </div>
         </div>
 
+        {/* BLESSINGS */}
         <div className="space-y-4 pt-4 border-t border-white/5">
           <div className="flex flex-col gap-4 glass p-6 rounded-3xl border-white/10 bg-white/5">
             <div className="flex items-center justify-between">
@@ -374,7 +431,6 @@ const CardBuilder: React.FC<Props> = ({ onThemeChange, activeTheme, t, lang }) =
           </div>
         </div>
         
-        {/* NATIVE AD PLACEMENT: Highly visible yet integrated */}
         <NativeAdUnit />
 
         <button 
@@ -386,8 +442,8 @@ const CardBuilder: React.FC<Props> = ({ onThemeChange, activeTheme, t, lang }) =
             <RefreshCw className="animate-spin" size={24} />
           ) : (
             <>
-              <Share2 size={24} />
-              {t.builder.action.generate}
+              {useShortener ? <Wand2 size={24} /> : <Share2 size={24} />}
+              {useShortener ? "Create Magic Link" : t.builder.action.generate}
             </>
           )}
         </button>
@@ -405,15 +461,16 @@ const CardBuilder: React.FC<Props> = ({ onThemeChange, activeTheme, t, lang }) =
                 <p className="text-sm text-gray-400 italic">{t.builder.action.quote}</p>
               </div>
 
-              <div className="p-5 bg-white/5 rounded-2xl flex items-center gap-4 border border-white/10 group focus-within:border-yellow-400/50 transition-all">
-                <input type="text" readOnly value={shareUrl} className="bg-transparent text-xs text-gray-400 flex-1 truncate outline-none font-mono" />
-                <button onClick={copyToClipboard} className="p-3 hover:bg-white/10 rounded-xl transition-all active:scale-90">
+              <div className="p-5 bg-white/5 rounded-2xl flex items-center gap-4 border border-white/10 group focus-within:border-yellow-400/50 transition-all relative overflow-hidden">
+                <input type="text" readOnly value={activeLink} className="bg-transparent text-xs text-gray-400 flex-1 truncate outline-none font-mono z-10" />
+                <button onClick={copyToClipboard} className="p-3 hover:bg-white/10 rounded-xl transition-all active:scale-90 z-10">
                   {copied ? <Check size={20} className="text-green-400" /> : <Copy size={20} />}
                 </button>
+                {shortLink && <div className="absolute right-0 top-0 bottom-0 w-24 bg-gradient-to-l from-green-500/10 to-transparent pointer-events-none" />}
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <button onClick={shareOnWhatsApp} className="py-4 px-6 bg-[#25D366] text-white font-black rounded-2xl flex items-center justify-center gap-3 hover:brightness-110 shadow-lg transition-all">
+                <button onClick={handleNativeShare} className="py-4 px-6 bg-[#25D366] text-white font-black rounded-2xl flex items-center justify-center gap-3 hover:brightness-110 shadow-lg transition-all">
                   <Send size={20} /> <span className="text-sm">{t.builder.action.whatsapp}</span>
                 </button>
                 <button onClick={downloadImage} className="py-4 px-6 bg-white/10 text-white font-black rounded-2xl flex items-center justify-center gap-3 hover:bg-white/20 transition-all border border-white/10">
@@ -459,8 +516,6 @@ const CardBuilder: React.FC<Props> = ({ onThemeChange, activeTheme, t, lang }) =
                 
                 {/* 
                   Target class 'download-noise-overlay' added for onclone manipulation.
-                  External noise URL is notoriously buggy in html2canvas due to CORS.
-                  We handle this in downloadImage by swapping it for a safe gradient.
                 */}
                 <div className="download-noise-overlay absolute inset-0 opacity-20 z-[-40] bg-[url('https://grainy-gradients.vercel.app/noise.svg')] mix-blend-overlay"></div>
                 
@@ -482,10 +537,6 @@ const CardBuilder: React.FC<Props> = ({ onThemeChange, activeTheme, t, lang }) =
                     <div className="space-y-1 md:space-y-2">
                       <p className="text-[#9CA3AF] text-[10px] md:text-xs font-black uppercase tracking-[0.4em] drop-shadow-sm">{t.builder.card.specialFor}</p>
                       
-                      {/* 
-                         Tagging 'download-target-you' allow us to target this element in onclone.
-                         We will remove the bg-clip property during download to prevent the "Golden Stripe" artifact.
-                      */}
                       <motion.h3 style={{ translateZ: 100, fontFamily: 'Sora, sans-serif' }} className="download-target-you text-3xl sm:text-4xl md:text-5xl font-black leading-none break-words px-2 bg-gradient-to-r from-yellow-100 via-yellow-300 to-yellow-100 bg-clip-text text-transparent drop-shadow-[0_0_25px_rgba(253,224,71,0.6)]">
                         {t.builder.card.you}
                       </motion.h3>

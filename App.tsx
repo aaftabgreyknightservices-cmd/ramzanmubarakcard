@@ -37,28 +37,39 @@ const App: React.FC = () => {
   }, [lang]);
 
   useEffect(() => {
-    const hash = window.location.hash;
+    // Robust Hash Parsing
+    const rawHash = window.location.hash;
+    
+    // Sometimes social apps add ?query=params after the hash, clean it
+    const cleanHash = rawHash.split('?')[0]; 
+    
     let dataParam = null;
 
-    if (hash) {
-       if (hash.includes('data=')) {
+    if (cleanHash) {
+       if (cleanHash.includes('data=')) {
           // Legacy support
-          dataParam = hash.split('data=')[1];
-       } else if (hash.length > 2) {
-          // New Short Link Format: #Name.Code or #Code
-          // We split by '.' and take the last part, which contains the data
-          const parts = hash.substring(1).split('.');
+          dataParam = cleanHash.split('data=')[1];
+       } else if (cleanHash.length > 2) {
+          // New Short Link Format: #Name.Code OR just #Code
+          // We look for the LAST part after a dot, or the whole thing if no dot
+          const parts = cleanHash.substring(1).split('.');
+          
+          // Logic: The data code is always the last segment
           dataParam = parts[parts.length - 1];
        }
     }
 
     if (dataParam) {
+      console.log("Attempting to decompress:", dataParam);
       const decoded = decompressData(dataParam);
       if (decoded) {
+          console.log("Decompression successful:", decoded);
           setInitialData(decoded);
           setIsReceiverMode(true);
           const theme = THEMES.find(t => t.id === decoded.themeId) || THEMES[0];
           setActiveTheme(theme);
+      } else {
+        console.warn("Decompression failed or returned null");
       }
     }
     setTimeout(() => setLoading(false), 500);
@@ -66,6 +77,7 @@ const App: React.FC = () => {
 
   const handleCreateNew = () => {
     setIsReceiverMode(false);
+    // Clean URL
     history.pushState("", document.title, window.location.pathname + window.location.search);
     setInitialData(null);
   };

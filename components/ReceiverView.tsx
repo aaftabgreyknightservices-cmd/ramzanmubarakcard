@@ -14,31 +14,10 @@ interface Props {
   lang: Language;
 }
 
-const CalligraphySVG = ({ color }: { color: string }) => (
-  <motion.svg 
-    viewBox="0 0 300 150" 
-    className="w-full h-full opacity-20"
-    initial={{ opacity: 0 }}
-    animate={{ opacity: 0.2 }}
-    transition={{ duration: 2 }}
-  >
-    <path
-      fill="none"
-      stroke={color}
-      strokeWidth="1.5"
-      strokeLinecap="round"
-      d="M40,80 Q70,20 120,60 T200,40 M60,110 Q150,130 240,90 M100,30 Q110,10 120,30 M180,30 Q190,10 200,30"
-    />
-    <text x="50%" y="50%" dominantBaseline="middle" textAnchor="middle" className="arabic text-[90px]" fill={color} opacity="0.4">
-      رمضان
-    </text>
-  </motion.svg>
-);
-
 const GoldenEnvelope = ({ from, onClick, isOpening, t }: { from: string, onClick: () => void, isOpening: boolean, t: any }) => {
   return (
     <motion.div 
-        className="relative perspective-1000 group cursor-pointer z-40" 
+        className="relative perspective-1000 group cursor-pointer z-40 max-w-[90vw]" 
         onClick={onClick}
         initial={{ y: 50, opacity: 0, scale: 0.9 }}
         animate={isOpening ? { scale: 1.5, opacity: 0, filter: "brightness(2)" } : { y: 0, opacity: 1, scale: 1 }}
@@ -56,7 +35,7 @@ const GoldenEnvelope = ({ from, onClick, isOpening, t }: { from: string, onClick
              <div className="absolute top-0 left-0 w-full h-1/2 bg-gradient-to-b from-white/30 to-white/5 clip-path-triangle backdrop-blur-[2px] z-20 shadow-sm"></div>
         </div>
 
-        <div className="relative z-30 flex flex-col items-center justify-center gap-4 mt-12">
+        <div className="relative z-30 flex flex-col items-center justify-center gap-4 mt-12 px-4">
             <motion.div whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }} className="relative">
                 <div className="w-20 h-20 bg-gradient-to-br from-[#8B0000] to-[#600000] rounded-full shadow-2xl border-[3px] border-[#A52A2A] flex items-center justify-center ring-4 ring-red-900/20 z-20 relative">
                     <Lock className="text-yellow-500/90 drop-shadow-md" size={32} />
@@ -65,9 +44,9 @@ const GoldenEnvelope = ({ from, onClick, isOpening, t }: { from: string, onClick
                     <div className="absolute inset-0 rounded-full border-2 border-white/50 animate-ping opacity-40 z-10"></div>
                 )}
             </motion.div>
-            <div className="text-center space-y-1">
+            <div className="text-center space-y-1 max-w-full">
                 <p className="text-[9px] md:text-[10px] uppercase tracking-[0.3em] text-yellow-900/60 font-black">A Gift From</p>
-                <h3 className="text-2xl md:text-4xl font-['Playfair_Display'] font-black text-yellow-950 drop-shadow-sm">{from}</h3>
+                <h3 className="text-2xl md:text-4xl font-['Playfair_Display'] font-black text-yellow-950 drop-shadow-sm truncate w-full px-2">{from}</h3>
             </div>
         </div>
         <div className="absolute -inset-20 bg-yellow-400/20 blur-[60px] -z-10 animate-pulse"></div>
@@ -93,7 +72,10 @@ const ReceiverView: React.FC<Props> = ({ data, onCreateNew, t, lang }) => {
   const [saidAmeen, setSaidAmeen] = useState(false);
   const [isMuted, setIsMuted] = useState(true);
   
+  // Ensure default values to prevent blank cards
+  const senderName = data.from || "A Friend";
   const theme = THEMES.find(t => t.id === data.themeId) || THEMES[0];
+  
   const cardRef = useRef<HTMLDivElement>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
@@ -185,7 +167,7 @@ const ReceiverView: React.FC<Props> = ({ data, onCreateNew, t, lang }) => {
                          <p className="text-yellow-400 font-mono text-xs md:text-sm tracking-widest animate-pulse">{t.wait}</p>
                      </motion.div>
                  )}
-                 <GoldenEnvelope from={data.from} onClick={handleOpenGift} isOpening={isOpening} t={t} />
+                 <GoldenEnvelope from={senderName} onClick={handleOpenGift} isOpening={isOpening} t={t} />
              </motion.div>
           </motion.div>
         )}
@@ -196,36 +178,34 @@ const ReceiverView: React.FC<Props> = ({ data, onCreateNew, t, lang }) => {
                 <div className="inline-block px-4 py-1.5 rounded-full bg-white/5 border border-white/10 text-yellow-400 text-[10px] md:text-sm font-black tracking-[0.3em] uppercase backdrop-blur-xl shadow-lg">{t.unlocked}</div>
              </motion.div>
 
-             <motion.div ref={cardRef} style={{ rotateX, rotateY, transformStyle: "preserve-3d" }} className="w-full aspect-[3/4.6] glass rounded-[3rem] md:rounded-[4rem] p-6 md:p-10 flex flex-col justify-between items-center text-center shadow-[0_50px_100px_rgba(0,0,0,0.8)] relative transform-gpu">
-                <div className="absolute inset-0 rounded-[3rem] md:rounded-[4rem] bg-gradient-to-br from-white/5 to-transparent z-0 pointer-events-none border border-white/10"></div>
-                <div className="absolute inset-0 rounded-[3rem] md:rounded-[4rem] opacity-30 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] mix-blend-overlay z-0"></div>
+             {/* 
+                CARD CONTAINER - LAYOUT FIX
+                Use min-h to allow content to grow.
+                Use flex-col to justify-between correctly.
+             */}
+             <motion.div 
+                ref={cardRef} 
+                style={{ rotateX, rotateY, transformStyle: "preserve-3d" }} 
+                className="w-full min-h-[60vh] md:min-h-[70vh] glass rounded-[2.5rem] md:rounded-[4rem] p-6 md:p-10 flex flex-col relative transform-gpu shadow-[0_50px_100px_rgba(0,0,0,0.8)]"
+             >
+                <div className="absolute inset-0 rounded-[2.5rem] md:rounded-[4rem] bg-gradient-to-br from-white/5 to-transparent z-0 pointer-events-none border border-white/10"></div>
+                <div className="absolute inset-0 rounded-[2.5rem] md:rounded-[4rem] opacity-30 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] mix-blend-overlay z-0"></div>
                 
                 <motion.div style={{ translateZ: 60, x: useTransform(smoothX, [-0.5, 0.5], [-20, 20]) }} className="absolute top-10 right-10 opacity-80 pointer-events-none z-10">
                     <Moon size={100} className="text-yellow-400 drop-shadow-[0_0_30px_rgba(253,224,71,0.4)]" fill="currentColor" stroke="none" />
                 </motion.div>
 
-                <div className="relative z-20 w-full h-full flex flex-col justify-between">
-                    <div className="space-y-4 mt-4">
+                {/* Content Container - Forces footer to bottom */}
+                <div className="relative z-20 flex-1 flex flex-col justify-between">
+                    
+                    {/* Header Section */}
+                    <div className="space-y-4 mt-2">
                         <span className="text-yellow-400 font-black tracking-[0.4em] uppercase text-[10px] md:text-xs drop-shadow-md">Holy Ramzan 2026</span>
-                        
-                        <motion.div
-                            initial={{ scale: 0.5, opacity: 0, rotateX: 90 }}
-                            animate={{ scale: 1, opacity: 1, rotateX: 0 }}
-                            transition={{ type: "spring", stiffness: 200, damping: 12, delay: 0.3 }}
-                            className="relative perspective-500"
-                        >
-                             <div className="arabic text-4xl md:text-6xl font-bold mt-2 drop-shadow-2xl text-white relative z-10">رمضان مبارك</div>
-                             <motion.div 
-                                className="absolute inset-0 arabic text-4xl md:text-6xl font-bold mt-2 text-yellow-300 blur-lg z-0 mix-blend-screen"
-                                animate={{ opacity: [0, 0.6, 0], scale: [1, 1.1, 1] }}
-                                transition={{ duration: 2.5, repeat: Infinity, ease: "easeInOut" }}
-                            >
-                                رمضان مبارك
-                            </motion.div>
-                        </motion.div>
+                        <div className="arabic text-4xl md:text-6xl font-bold mt-2 drop-shadow-2xl text-white relative z-10">رمضان مبارك</div>
                     </div>
 
-                    <div className="space-y-6 md:space-y-8">
+                    {/* Middle Section - The Wish */}
+                    <div className="py-8 space-y-6 md:space-y-8 flex-1 flex flex-col justify-center">
                         <div className="space-y-2">
                              <p className="text-gray-400 text-[10px] md:text-xs font-black uppercase tracking-[0.5em]">A Special Dua For</p>
                              <h3 style={{ color: theme.secondary }} className="text-5xl md:text-6xl font-black leading-none bg-gradient-to-r from-yellow-100 via-yellow-300 to-yellow-100 bg-clip-text text-transparent drop-shadow-[0_0_40px_rgba(253,224,71,0.6)]">You</h3>
@@ -233,19 +213,24 @@ const ReceiverView: React.FC<Props> = ({ data, onCreateNew, t, lang }) => {
 
                         <div className="relative">
                             <Star className="absolute -top-6 left-1/2 -translate-x-1/2 text-yellow-400/50 w-6 h-6 animate-spin-slow" />
-                            <p className="text-[#F9FAFB] italic text-lg sm:text-xl md:text-2xl leading-relaxed px-4 font-['Playfair_Display'] font-medium drop-shadow-lg">"{data.wish}"</p>
+                            <p className="text-[#F9FAFB] italic text-lg sm:text-xl md:text-2xl leading-relaxed px-2 font-['Playfair_Display'] font-medium drop-shadow-lg break-words">
+                                "{data.wish}"
+                            </p>
                         </div>
 
                         {data.includeBlessing && (
                            <div className="pt-6 border-t border-white/10 relative">
                               <p className="text-[10px] md:text-xs text-[#FCD34D] font-black uppercase tracking-[0.5em] mb-4">Blessings</p>
-                              <p className="text-lg md:text-xl text-[#FEF3C7] leading-relaxed italic font-['Playfair_Display'] font-semibold drop-shadow-[0_0_15px_rgba(255,209,102,0.3)]">"{BLESSINGS[data.blessingIndex || 0]}"</p>
+                              <p className="text-base md:text-lg text-[#FEF3C7] leading-relaxed italic font-['Playfair_Display'] font-semibold drop-shadow-[0_0_15px_rgba(255,209,102,0.3)]">
+                                  "{BLESSINGS[data.blessingIndex || 0]}"
+                              </p>
                            </div>
                         )}
                     </div>
 
-                    <div className="mt-8 flex flex-col items-center">
-                        <p className="text-[9px] md:text-[11px] text-gray-400 font-black uppercase tracking-[0.3em] mb-2">With Pure Heart,</p>
+                    {/* Footer Section - Sender Name - Guaranteed Visibility */}
+                    <div className="mt-auto pt-6 flex flex-col items-center pb-2">
+                        <p className="text-[9px] md:text-[11px] text-gray-400 font-black uppercase tracking-[0.3em] mb-3">With Pure Heart,</p>
                         <div className="relative group/name">
                              <motion.p 
                                 initial={{ y: 30, opacity: 0 }}
@@ -264,7 +249,7 @@ const ReceiverView: React.FC<Props> = ({ data, onCreateNew, t, lang }) => {
                                     }}
                                     transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
                                 >
-                                    {data.from}
+                                    {senderName}
                                 </motion.span>
                              </motion.p>
                              
@@ -274,27 +259,12 @@ const ReceiverView: React.FC<Props> = ({ data, onCreateNew, t, lang }) => {
                                 transition={{ delay: 1, duration: 0.8, ease: "easeOut" }}
                                 className="absolute -bottom-1 left-1/2 -translate-x-1/2 h-[3px] bg-yellow-500 blur-[4px]"
                              />
-                             
-                             <motion.div
-                                animate={{ rotate: [0, 360], scale: [0.8, 1.2, 0.8] }}
-                                transition={{ duration: 4, repeat: Infinity, ease: "linear" }}
-                                className="absolute -right-8 -top-4 text-yellow-300 opacity-80"
-                             >
-                                <Sparkles size={24} />
-                             </motion.div>
-                             <motion.div
-                                animate={{ rotate: [0, -360], scale: [1, 0.8, 1] }}
-                                transition={{ duration: 5, repeat: Infinity, ease: "linear" }}
-                                className="absolute -left-8 -bottom-2 text-yellow-300 opacity-60"
-                             >
-                                <Sparkles size={16} />
-                             </motion.div>
                         </div>
                     </div>
                 </div>
              </motion.div>
 
-             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 1.5 }} className="grid grid-cols-1 sm:grid-cols-2 gap-4 w-full px-4">
+             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 1.5 }} className="grid grid-cols-1 sm:grid-cols-2 gap-4 w-full px-4 mb-8">
                   <button onClick={() => setSaidAmeen(true)} disabled={saidAmeen} className={`py-4 rounded-full font-black text-sm uppercase tracking-widest transition-all ${saidAmeen ? 'bg-green-500 text-white shadow-[0_0_30px_rgba(34,197,94,0.4)]' : 'bg-white/10 hover:bg-white/20 text-white border border-white/10'}`}>
                      {saidAmeen ? <span className="flex items-center justify-center gap-2"><Check /> {t.ameenSaid}</span> : t.sayAmeen}
                   </button>
