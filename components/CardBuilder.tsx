@@ -51,17 +51,19 @@ const CardBuilder: React.FC<Props> = ({ onThemeChange, activeTheme, t, lang, ini
 
   const [wishIndex, setWishIndex] = useState(0);
   
-  // Update state when initialData is provided via shared link
+  // --- PRE-FILL LOGIC: Handle Shared Link Data ---
   useEffect(() => {
     if (initialData) {
         setFormData(initialData);
-        // Sync the wish index for UI buttons (Next/Prev) if it matches a preset
+        
+        // Sync Wish Carousel Index
+        // This ensures the "Next/Prev" buttons start from the correct position
         const wIdx = t.wishes.findIndex((w: string) => normalize(w) === normalize(initialData.wish));
         if (wIdx !== -1) {
             setWishIndex(wIdx);
         }
         
-        // Sync Theme in Parent
+        // Sync Theme in Parent Layout
         const restoredTheme = THEMES.find(th => th.id === initialData.themeId);
         if (restoredTheme && restoredTheme.id !== activeTheme.id) {
             onThemeChange(restoredTheme);
@@ -69,7 +71,7 @@ const CardBuilder: React.FC<Props> = ({ onThemeChange, activeTheme, t, lang, ini
     }
   }, [initialData]);
 
-  // Update default wish when language changes (only if no custom data loaded)
+  // Update default wish when language changes (only if not editing a shared card)
   useEffect(() => {
     if (!initialData) {
         setFormData(prev => ({
@@ -90,22 +92,18 @@ const CardBuilder: React.FC<Props> = ({ onThemeChange, activeTheme, t, lang, ini
   const mouseX = useMotionValue(0);
   const mouseY = useMotionValue(0);
 
-  // Heavier spring for premium feel
   const springConfig = { stiffness: 300, damping: 30, mass: 0.8 };
   const smoothX = useSpring(mouseX, springConfig);
   const smoothY = useSpring(mouseY, springConfig);
 
-  // Hyper-Deep Tilt Range
   const rotateX = useTransform(smoothY, [-0.5, 0.5], [20, -20]);
   const rotateY = useTransform(smoothX, [-0.5, 0.5], [-20, 20]);
   
-  // Dynamic Shadow (Moves opposite to card for floating effect)
   const shadowX = useTransform(smoothX, [-0.5, 0.5], [-30, 30]);
   const shadowY = useTransform(smoothY, [-0.5, 0.5], [-30, 30]);
   const shadowOpacity = useTransform(smoothY, [-0.5, 0.5], [0.4, 0.8]);
   const dynamicShadow = useMotionTemplate`${shadowX}px ${shadowY}px 60px rgba(0,0,0,${shadowOpacity})`;
 
-  // Holographic Glare/Sheen
   const glareX = useTransform(smoothX, [-0.5, 0.5], [0, 100]);
   const glareY = useTransform(smoothY, [-0.5, 0.5], [0, 100]);
   const sheenGradient = useMotionTemplate`radial-gradient(circle at ${glareX}% ${glareY}%, rgba(255,255,255,0.4) 0%, transparent 60%)`;
@@ -175,21 +173,16 @@ const CardBuilder: React.FC<Props> = ({ onThemeChange, activeTheme, t, lang, ini
 
   const generateLink = async () => {
     setIsGenerating(true);
-    
-    // Allow UI to breathe
     await new Promise(resolve => setTimeout(resolve, 800));
 
     const payload = { ...formData, to: "You", relationship: "Friend", themeId: activeTheme.id };
     
-    // --- V4/V5 GENERATION ---
-    // 1. Get the content code (2-3 chars usually)
+    // V5 GENERATION: Compress to matrix code
     const code = compressData(payload);
     
-    // 2. Format Sender Name
-    // Replace spaces/dots with underscores to keep URL clean
+    // Sanitize sender name for URL
     const safeSender = formData.from.trim().replace(/[\s.]+/g, '_');
     
-    // 3. Construct URL: #Sender.Code
     const baseUrl = window.location.origin + window.location.pathname;
     const shortUrl = `${baseUrl}#${safeSender}.${code}`;
     
@@ -228,7 +221,6 @@ const CardBuilder: React.FC<Props> = ({ onThemeChange, activeTheme, t, lang, ini
 
   const downloadImage = async () => {
     if (!cardRef.current) return;
-    
     mouseX.set(0);
     mouseY.set(0);
 

@@ -35,12 +35,12 @@ const App: React.FC = () => {
   }, [lang]);
 
   useEffect(() => {
-    // V4/V5 Hash Parsing Protocol
+    // V5 Hash Parsing Protocol (Bitwise Matrix)
     const rawHash = window.location.hash.substring(1); // Remove #
     
     if (rawHash) {
-       // Format: SenderName.Code OR Sender_Name.Code
-       // We split by the LAST dot, as sender name might contain dots (though sanitized to _ usually)
+       // Format: SenderName.Code 
+       // We split by the LAST dot to separate Name from Matrix Code
        const lastDotIndex = rawHash.lastIndexOf('.');
        
        let sender = "";
@@ -50,31 +50,36 @@ const App: React.FC = () => {
            sender = rawHash.substring(0, lastDotIndex);
            code = rawHash.substring(lastDotIndex + 1);
        } else {
-           // Fallback for legacy or unknown format: Treat whole hash as code
            code = rawHash;
        }
 
        if (code) {
-          console.log("Decoding:", { sender, code });
+          console.log("Processing Shared Card:", { sender, code });
           const decoded = decompressData(code, sender);
           
           if (decoded) {
               setInitialData(decoded);
               
-              // Set the active theme based on the decoded data
+              // 1. Set Theme Immediately
               const theme = THEMES.find(t => t.id === decoded.themeId) || THEMES[0];
               setActiveTheme(theme);
               
-              // Automatically scroll to builder section after a short delay
-              // so the user sees the card (editable format) immediately
+              // 2. Scroll to Builder (Editable View)
               setTimeout(() => {
-                 document.getElementById('builder')?.scrollIntoView({ behavior: 'smooth' });
-              }, 1000);
+                 document.getElementById('builder')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+              }, 800);
           }
        }
     }
+    // Simulate asset loading
     setTimeout(() => setLoading(false), 500);
   }, []);
+
+  const handleCreateNew = () => {
+    // Reset to defaults
+    setInitialData(null);
+    history.pushState("", document.title, window.location.pathname + window.location.search);
+  };
 
   const t = translations[lang];
 
@@ -92,7 +97,7 @@ const App: React.FC = () => {
       
       <EidCountdown t={t.countdown} lang={lang} />
 
-      {/* Primary Ad Placement: Between Info & Builder */}
+      {/* Primary Ad Placement */}
       <div className="max-w-7xl mx-auto px-6">
          <DisplayAdUnit size="large" />
       </div>
@@ -108,14 +113,11 @@ const App: React.FC = () => {
                {t.builder.title}
             </h2>
             <p className="text-gray-400 max-w-2xl mx-auto text-lg md:text-xl font-medium italic">
-               {t.builder.subtitle}
+               {initialData ? "Edit this card to make it yours, or share it as is." : t.builder.subtitle}
             </p>
           </motion.div>
           
-          {/* 
-            CardBuilder now accepts initialData. 
-            If present (from hash), it pre-fills the form, satisfying the requirement for "editable format".
-          */}
+          {/* Card Builder in 'Editable Mode' if initialData is present */}
           <CardBuilder 
             onThemeChange={setActiveTheme} 
             activeTheme={activeTheme}
