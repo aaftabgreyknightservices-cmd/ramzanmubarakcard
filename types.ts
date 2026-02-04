@@ -84,7 +84,7 @@ export const BLESSINGS = [
 ];
 
 // Helper: Normalize text
-const normalize = (str: string) => str.toLowerCase().replace(/[^a-z0-9]/g, '');
+export const normalize = (str: string) => str.toLowerCase().replace(/[^a-z0-9]/g, '');
 
 // --- V5 PROTOCOL: MATRIX PACKING WITH SALT ---
 // Logic: (Salt << 14) | (Theme << 12) | (Blessing << 8) | WishIndex

@@ -3,7 +3,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence, useMotionValue, useSpring, useTransform, useMotionTemplate } from 'framer-motion';
 import { Share2, Download, Copy, Check, Sparkles, RefreshCw, Send, Moon, Heart, ChevronLeft, ChevronRight, Shuffle, PenTool, Link as LinkIcon, Wand2 } from 'lucide-react';
 import html2canvas from 'html2canvas';
-import { CardData, CardTheme, THEMES, compressData } from '../types';
+import { CardData, CardTheme, THEMES, compressData, normalize } from '../types';
 import { Language } from '../translations';
 import { NativeAdUnit, DisplayAdUnit } from './AdUnits';
 
@@ -12,6 +12,7 @@ interface Props {
   activeTheme: CardTheme;
   t: any;
   lang: Language;
+  initialData?: CardData | null;
 }
 
 const CalligraphySVG = ({ color }: { color: string }) => (
@@ -36,7 +37,7 @@ const CalligraphySVG = ({ color }: { color: string }) => (
   </motion.svg>
 );
 
-const CardBuilder: React.FC<Props> = ({ onThemeChange, activeTheme, t, lang }) => {
+const CardBuilder: React.FC<Props> = ({ onThemeChange, activeTheme, t, lang, initialData }) => {
   const [formData, setFormData] = useState<CardData>({
     from: '',
     to: 'You', 
@@ -48,15 +49,36 @@ const CardBuilder: React.FC<Props> = ({ onThemeChange, activeTheme, t, lang }) =
     blessingIndex: 0
   });
 
-  // Update default wish when language changes
+  const [wishIndex, setWishIndex] = useState(0);
+  
+  // Update state when initialData is provided via shared link
   useEffect(() => {
-    setFormData(prev => ({
-        ...prev,
-        wish: t.wishes[0]
-    }));
+    if (initialData) {
+        setFormData(initialData);
+        // Sync the wish index for UI buttons (Next/Prev) if it matches a preset
+        const wIdx = t.wishes.findIndex((w: string) => normalize(w) === normalize(initialData.wish));
+        if (wIdx !== -1) {
+            setWishIndex(wIdx);
+        }
+        
+        // Sync Theme in Parent
+        const restoredTheme = THEMES.find(th => th.id === initialData.themeId);
+        if (restoredTheme && restoredTheme.id !== activeTheme.id) {
+            onThemeChange(restoredTheme);
+        }
+    }
+  }, [initialData]);
+
+  // Update default wish when language changes (only if no custom data loaded)
+  useEffect(() => {
+    if (!initialData) {
+        setFormData(prev => ({
+            ...prev,
+            wish: t.wishes[0]
+        }));
+    }
   }, [lang]);
 
-  const [wishIndex, setWishIndex] = useState(0);
   const [isGenerating, setIsGenerating] = useState(false);
   const [shareUrl, setShareUrl] = useState('');
   
@@ -77,10 +99,6 @@ const CardBuilder: React.FC<Props> = ({ onThemeChange, activeTheme, t, lang }) =
   const rotateX = useTransform(smoothY, [-0.5, 0.5], [20, -20]);
   const rotateY = useTransform(smoothX, [-0.5, 0.5], [-20, 20]);
   
-  // Parallax Element Movements
-  const moonTranslateX = useTransform(smoothX, [-0.5, 0.5], [-25, 25]);
-  const moonTranslateY = useTransform(smoothY, [-0.5, 0.5], [-25, 25]);
-
   // Dynamic Shadow (Moves opposite to card for floating effect)
   const shadowX = useTransform(smoothX, [-0.5, 0.5], [-30, 30]);
   const shadowY = useTransform(smoothY, [-0.5, 0.5], [-30, 30]);
@@ -163,7 +181,7 @@ const CardBuilder: React.FC<Props> = ({ onThemeChange, activeTheme, t, lang }) =
 
     const payload = { ...formData, to: "You", relationship: "Friend", themeId: activeTheme.id };
     
-    // --- V4 GENERATION ---
+    // --- V4/V5 GENERATION ---
     // 1. Get the content code (2-3 chars usually)
     const code = compressData(payload);
     

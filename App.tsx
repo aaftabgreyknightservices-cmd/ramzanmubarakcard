@@ -7,14 +7,12 @@ import { translations, Language } from './translations';
 // Components
 import Hero from './components/Hero';
 import CardBuilder from './components/CardBuilder';
-import ReceiverView from './components/ReceiverView';
 import Footer from './components/Footer';
 import EidCountdown from './components/EidCountdown';
 import { DisplayAdUnit } from './components/AdUnits';
 
 const App: React.FC = () => {
   const [activeTheme, setActiveTheme] = useState<CardTheme>(THEMES[0]);
-  const [isReceiverMode, setIsReceiverMode] = useState(false);
   const [initialData, setInitialData] = useState<CardData | null>(null);
   const [loading, setLoading] = useState(true);
   
@@ -37,7 +35,7 @@ const App: React.FC = () => {
   }, [lang]);
 
   useEffect(() => {
-    // V4 Hash Parsing Protocol
+    // V4/V5 Hash Parsing Protocol
     const rawHash = window.location.hash.substring(1); // Remove #
     
     if (rawHash) {
@@ -62,21 +60,21 @@ const App: React.FC = () => {
           
           if (decoded) {
               setInitialData(decoded);
-              setIsReceiverMode(true);
+              
+              // Set the active theme based on the decoded data
               const theme = THEMES.find(t => t.id === decoded.themeId) || THEMES[0];
               setActiveTheme(theme);
+              
+              // Automatically scroll to builder section after a short delay
+              // so the user sees the card (editable format) immediately
+              setTimeout(() => {
+                 document.getElementById('builder')?.scrollIntoView({ behavior: 'smooth' });
+              }, 1000);
           }
        }
     }
     setTimeout(() => setLoading(false), 500);
   }, []);
-
-  const handleCreateNew = () => {
-    setIsReceiverMode(false);
-    // Clean URL
-    history.pushState("", document.title, window.location.pathname + window.location.search);
-    setInitialData(null);
-  };
 
   const t = translations[lang];
 
@@ -86,10 +84,6 @@ const App: React.FC = () => {
               <div className="w-16 h-16 border-4 border-yellow-400 border-t-transparent rounded-full animate-spin"></div>
           </div>
       );
-  }
-
-  if (isReceiverMode && initialData) {
-    return <ReceiverView data={initialData} onCreateNew={handleCreateNew} t={t.receiver} lang={lang} />;
   }
 
   return (
@@ -117,11 +111,17 @@ const App: React.FC = () => {
                {t.builder.subtitle}
             </p>
           </motion.div>
+          
+          {/* 
+            CardBuilder now accepts initialData. 
+            If present (from hash), it pre-fills the form, satisfying the requirement for "editable format".
+          */}
           <CardBuilder 
             onThemeChange={setActiveTheme} 
             activeTheme={activeTheme}
             t={t}
             lang={lang}
+            initialData={initialData}
           />
         </div>
       </section>
