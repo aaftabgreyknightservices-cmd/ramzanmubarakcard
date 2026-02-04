@@ -70,19 +70,27 @@ const App: React.FC = () => {
     setTimeout(() => setLoading(false), 500);
   }, []);
 
-  // Separate effect to handle scrolling once loading is complete and data is ready
+  // Robust scrolling logic for shared links (Mobile Optimized)
   useEffect(() => {
     if (!loading && initialData) {
-        // Using a timeout allows the layout to stabilize (e.g. Hero animation or fonts)
-        const timer = setTimeout(() => {
-            const builderElement = document.getElementById('builder');
-            if (builderElement) {
-                // 'start' alignment is usually better for mobile so the title isn't cut off
-                builderElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        // Function to trigger scroll
+        const scrollToBuilder = () => {
+            const builderSection = document.getElementById('builder');
+            if (builderSection) {
+                // block: 'start' aligns the top of the section with the top of the viewport
+                // This is generally more robust for mobile layout shifts than calculated offsets
+                builderSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
             }
-        }, 600); // Trigger slightly after the loading screen disappears
+        };
+
+        // Sequence of scroll attempts to ensure it catches layout shifts (Ads, Hero resize, Address bar)
+        // 1. Quick scroll as soon as DOM is ready
+        const t1 = setTimeout(scrollToBuilder, 100);
         
-        return () => clearTimeout(timer);
+        // 2. Reinforced scroll after animations/ads have likely settled
+        const t2 = setTimeout(scrollToBuilder, 1000);
+        
+        return () => { clearTimeout(t1); clearTimeout(t2); };
     }
   }, [loading, initialData]);
 
