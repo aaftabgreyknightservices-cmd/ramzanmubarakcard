@@ -149,49 +149,43 @@ const CardBuilder: React.FC<Props> = ({ onThemeChange, activeTheme, t, lang, set
   const downloadImage = async () => {
     if (!cardRef.current) return;
     
-    // 1. FREEZE STATE FOR CAPTURE
-    // Temporarily reset 3D rotation to 0 for a flat capture
     const wasHovered = isHovered;
     mouseX.set(0); 
     mouseY.set(0);
     setIsHovered(false);
     
-    // Wait for smooth springs to settle to 0
     await new Promise(resolve => setTimeout(resolve, 400));
-    
-    // Haptic Feedback
     if (navigator.vibrate) navigator.vibrate(50);
 
     try {
         const canvas = await html2canvas(cardRef.current, { 
             backgroundColor: null, 
-            scale: 3, // High Resolution Retina
+            scale: 3, 
             useCORS: true, 
             allowTaint: true,
             logging: false,
             onclone: (clonedDoc) => {
-                const cardContainer = clonedDoc.querySelector('#card-preview');
-                const card = cardContainer?.querySelector('.group\\/card') as HTMLElement;
+                const card = clonedDoc.querySelector('.group\\/card') as HTMLElement;
                 
                 if (card) {
-                    // --- FLATTEN 3D ---
-                    // Remove 3D transforms to prevent "tilted" capture artifacts
+                    // 1. FLATTEN 3D
                     card.style.transform = 'none';
                     card.style.boxShadow = 'none'; 
                     card.style.border = 'none'; 
                     
-                    // --- FORCE HIGH-FIDELITY BACKGROUND ---
-                    // html2canvas fails with Tailwind bg-gradient-to-br, so we inline it manually
-                    card.style.background = `linear-gradient(135deg, ${activeTheme.primary}, ${activeTheme.secondary})`; 
+                    // 2. HIGH-FIDELITY GRADIENT MAPPING
+                    // Map Tailwind gradients to exact CSS linear-gradients
+                    const gradientMap: Record<string, string> = {
+                        'crescent-dream': 'linear-gradient(135deg, #0a0515 0%, #1a0a3d 50%, #0d1f3f 100%)',
+                        'lantern-glow': 'linear-gradient(135deg, #150a05 0%, #2d1b0d 50%, #3f1f0d 100%)',
+                        'peaceful-garden': 'linear-gradient(135deg, #05150a 0%, #0a3d1a 50%, #0d3f1f 100%)',
+                        'royal-purple': 'linear-gradient(135deg, #150515 0%, #3d0a3d 50%, #3f0d3f 100%)',
+                    };
                     
-                    // --- LAYOUT SAFETY ---
-                    // Add padding to prevent sender name hitting the bottom
-                    card.style.paddingBottom = '50px';
+                    card.style.background = gradientMap[activeTheme.id] || `linear-gradient(135deg, ${activeTheme.primary}, ${activeTheme.secondary})`; 
                 }
 
-                // --- FIX GOLD TEXT (REPLACE GRADIENT WITH SOLID + SHADOW) ---
-                // "background-clip: text" renders transparent in html2canvas. 
-                // We replace it with solid gold and drop-shadow to simulate glow.
+                // 3. FIX GOLD TEXT (REPLACE GRADIENT WITH SOLID + SHADOW)
                 const gradients = clonedDoc.querySelectorAll('.bg-clip-text');
                 gradients.forEach((el: any) => {
                     el.style.webkitBackgroundClip = 'initial'; 
@@ -201,38 +195,56 @@ const CardBuilder: React.FC<Props> = ({ onThemeChange, activeTheme, t, lang, set
                     el.style.textShadow = '0 2px 10px rgba(0,0,0,0.5)';
                 });
 
-                // --- FIX "YOU" TEXT ---
+                // 4. FIX "RAMZAN MUBARAK" (ARABIC)
+                const greeting = clonedDoc.querySelector('.download-arabic-greeting') as HTMLElement;
+                if (greeting) {
+                    greeting.style.color = '#FFD700';
+                    greeting.style.textShadow = '0 2px 15px rgba(0,0,0,0.5), 0 0 5px rgba(255,215,0,0.3)';
+                    greeting.style.opacity = '1';
+                }
+
+                // 5. FIX "YOU" TEXT
                 const youText = clonedDoc.querySelector('.download-target-you') as HTMLElement;
                 if (youText) { 
-                    youText.style.color = '#FCD34D'; // Lighter Gold
+                    youText.style.color = '#FCD34D'; 
                     youText.style.textShadow = '0 0 25px rgba(253, 224, 71, 0.6), 0 2px 4px rgba(0,0,0,0.8)';
-                    // Scale it up slightly to match the "popped out" Z-depth look
                     youText.style.transform = 'scale(1.1)'; 
                 }
 
-                // --- FIX 3D ELEMENTS (RESCALE) ---
-                // Elements with translateZ look big in app but small in 2D capture.
-                // We manually scale them up here to match the user's perception.
+                // 6. SCALE UP 3D ELEMENTS
                 const floatingElements = clonedDoc.querySelectorAll('.card-floating-3d');
                 floatingElements.forEach((el) => {
                     const hEl = el as HTMLElement;
-                    hEl.style.transform = 'scale(1.2)'; // Boost size by 20%
-                    hEl.style.filter = 'drop-shadow(0 15px 25px rgba(0,0,0,0.5))'; // Deep shadow
+                    hEl.style.transform = 'scale(1.2)'; 
+                    hEl.style.filter = 'drop-shadow(0 15px 25px rgba(0,0,0,0.5))'; 
                     hEl.style.opacity = '1';
                 });
 
-                // --- PREVENT OVERLAPS ---
-                const senderName = clonedDoc.querySelector('.download-sender-name') as HTMLElement;
-                if (senderName) {
-                    // Ensure the sender name stays on top of any decorations
-                    senderName.style.position = 'relative';
-                    senderName.style.zIndex = '50'; 
+                // 7. LAYOUT ENGINE: PREVENT OVERLAPS
+                // Move Sender Name UP to clear the corner decorations
+                const senderContainer = clonedDoc.querySelector('.download-sender-container') as HTMLElement;
+                if (senderContainer) {
+                    senderContainer.style.transform = 'translateY(-40px)'; // Lift UP by 40px
+                    senderContainer.style.position = 'relative';
+                    senderContainer.style.zIndex = '50';
                 }
 
-                // --- BRANDING ---
+                // Push Beads DOWN/OUT to clear the text
+                const beads = clonedDoc.querySelector('.floating-beads') as HTMLElement;
+                if (beads) {
+                    beads.style.transform = 'scale(0.8) translate(30px, 30px)'; // Shrink and move away
+                }
+
+                // Push Canon OUT
+                const canon = clonedDoc.querySelector('.floating-canon') as HTMLElement;
+                if (canon) {
+                    canon.style.transform = 'scale(0.9) translate(20px, 20px)';
+                }
+
+                // 8. BRANDING
                 const watermark = clonedDoc.createElement('div');
                 watermark.className = 'absolute bottom-2 left-0 w-full text-center pointer-events-none';
-                watermark.innerHTML = `<span style="color: rgba(255,255,255,0.4); font-size: 10px; text-transform: uppercase; letter-spacing: 3px; font-weight: bold; font-family: sans-serif; text-shadow: 0 1px 2px rgba(0,0,0,0.8);">NoorCard • Ramzan 2026</span>`;
+                watermark.innerHTML = `<span style="color: rgba(255,255,255,0.3); font-size: 9px; text-transform: uppercase; letter-spacing: 3px; font-weight: bold; font-family: sans-serif; text-shadow: 0 1px 2px rgba(0,0,0,0.8);">NoorCard • Ramzan 2026</span>`;
                 card?.appendChild(watermark);
             }
         });
@@ -270,11 +282,9 @@ const CardBuilder: React.FC<Props> = ({ onThemeChange, activeTheme, t, lang, set
          loading="lazy"
       />
       
-      {/* 3D Calligraphy Watermarks */}
       <img src={cld("https://res.cloudinary.com/dxw5mimqj/image/upload/v1770240241/Allah_Calligraphy_f184t1.png", 300)} className="absolute top-0 right-1/4 w-32 opacity-10 pointer-events-none" loading="lazy" />
       <img src={cld("https://res.cloudinary.com/dxw5mimqj/image/upload/v1770240086/Muhammad_Calligraphy_i8a229.png", 300)} className="absolute bottom-1/4 left-10 w-32 opacity-10 pointer-events-none" loading="lazy" />
 
-      {/* NEW: Kaaba Silhouette (Background Deep) */}
       <motion.img 
          src={cld("https://res.cloudinary.com/dxw5mimqj/image/upload/v1770240123/Kaaba_gay44v.png", 400)}
          className="absolute top-20 right-0 w-40 md:w-56 z-0 opacity-20 hidden lg:block pointer-events-none blur-[1px]"
@@ -283,7 +293,6 @@ const CardBuilder: React.FC<Props> = ({ onThemeChange, activeTheme, t, lang, set
          alt="Kaaba"
       />
       
-      {/* NEW: Ramadan Drum (Background) */}
       <motion.img 
          src={cld("https://res.cloudinary.com/dxw5mimqj/image/upload/v1770239651/Ramadan_Drum_tnrvgo.png", 300)}
          className="absolute bottom-40 right-[-40px] w-28 md:w-36 opacity-60 hidden lg:block pointer-events-none"
@@ -292,7 +301,6 @@ const CardBuilder: React.FC<Props> = ({ onThemeChange, activeTheme, t, lang, set
          alt="Drum"
       />
 
-       {/* NEW: Alarm (Top Left Background) */}
       <motion.img 
          src={cld("https://res.cloudinary.com/dxw5mimqj/image/upload/v1770239956/Ramadan_Alarm_fk7euc.png", 200)}
          className="absolute top-40 -left-16 w-24 z-0 opacity-50 hidden lg:block pointer-events-none"
@@ -485,7 +493,7 @@ const CardBuilder: React.FC<Props> = ({ onThemeChange, activeTheme, t, lang, set
                 {/* --- MINIATURE 3D DECORATIONS ON CARD --- */}
                 <motion.img 
                   src={cld("https://res.cloudinary.com/dxw5mimqj/image/upload/v1770239783/Ramadan_Lantern_xeufdp.png", 100)} 
-                  className="card-floating-3d absolute -top-4 -right-4 w-16 z-50 drop-shadow-[0_10px_10px_rgba(0,0,0,0.5)] pointer-events-none"
+                  className="card-floating-3d floating-lantern absolute -top-4 -right-4 w-16 z-50 drop-shadow-[0_10px_10px_rgba(0,0,0,0.5)] pointer-events-none"
                   style={{ translateZ: 120 }}
                   animate={{ y: [0, 5, 0], rotate: [0, 5, 0] }}
                   transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
@@ -506,7 +514,7 @@ const CardBuilder: React.FC<Props> = ({ onThemeChange, activeTheme, t, lang, set
                 {/* NEW: Miniature Canon (Bottom Right) */}
                 <motion.img 
                   src={cld("https://res.cloudinary.com/dxw5mimqj/image/upload/v1770239698/Ramadan_Canon_uddqjs.png", 150)} 
-                  className="card-floating-3d absolute bottom-20 -right-2 w-16 z-30 drop-shadow-[0_10px_20px_rgba(0,0,0,0.5)] pointer-events-none"
+                  className="card-floating-3d floating-canon absolute bottom-20 -right-2 w-16 z-30 drop-shadow-[0_10px_20px_rgba(0,0,0,0.5)] pointer-events-none"
                   style={{ translateZ: 60 }}
                   animate={{ rotate: [0, -5, 0] }}
                   transition={{ duration: 6, repeat: Infinity, ease: "easeInOut" }}
@@ -515,7 +523,7 @@ const CardBuilder: React.FC<Props> = ({ onThemeChange, activeTheme, t, lang, set
                 {/* NEW: Miniature Gift (Bottom Left) */}
                  <motion.img 
                   src={cld("https://res.cloudinary.com/dxw5mimqj/image/upload/v1770239653/Ramadan_Gift_wwyhcs.png", 150)} 
-                  className="card-floating-3d absolute bottom-28 -left-2 w-12 z-30 drop-shadow-[0_5px_15px_rgba(0,0,0,0.4)] pointer-events-none"
+                  className="card-floating-3d floating-gift absolute bottom-28 -left-2 w-12 z-30 drop-shadow-[0_5px_15px_rgba(0,0,0,0.4)] pointer-events-none"
                   style={{ translateZ: 70 }}
                   animate={{ y: [0, -5, 0] }}
                   transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
@@ -524,7 +532,7 @@ const CardBuilder: React.FC<Props> = ({ onThemeChange, activeTheme, t, lang, set
                  {/* REPOSITIONED: Star Cluster (Top Right - Balanced with Lantern) */}
                  <motion.img 
                   src={cld("https://res.cloudinary.com/dxw5mimqj/image/upload/v1770239609/Star_ga6mwm.png", 100)} 
-                  className="card-floating-3d absolute top-[18%] right-[12%] w-6 md:w-8 z-20 drop-shadow-[0_0_10px_rgba(255,215,0,0.6)] pointer-events-none"
+                  className="card-floating-3d floating-star absolute top-[18%] right-[12%] w-6 md:w-8 z-20 drop-shadow-[0_0_10px_rgba(255,215,0,0.6)] pointer-events-none"
                   style={{ translateZ: 50 }}
                   animate={{ scale: [1, 1.2, 1], opacity: [0.8, 1, 0.8], rotate: [0, 15, 0] }}
                   transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
@@ -532,7 +540,7 @@ const CardBuilder: React.FC<Props> = ({ onThemeChange, activeTheme, t, lang, set
                 {/* Extra Tiny Star for Aesthetics */}
                 <motion.img 
                   src={cld("https://res.cloudinary.com/dxw5mimqj/image/upload/v1770239609/Star_ga6mwm.png", 50)} 
-                  className="card-floating-3d absolute top-[23%] right-[8%] w-3 md:w-4 z-20 drop-shadow-[0_0_5px_rgba(255,215,0,0.8)] pointer-events-none"
+                  className="card-floating-3d floating-star absolute top-[23%] right-[8%] w-3 md:w-4 z-20 drop-shadow-[0_0_5px_rgba(255,215,0,0.8)] pointer-events-none"
                   style={{ translateZ: 40 }}
                   animate={{ scale: [1, 1.5, 1], opacity: [0.5, 1, 0.5] }}
                   transition={{ duration: 2, repeat: Infinity, ease: "easeInOut", delay: 1 }}
@@ -540,7 +548,7 @@ const CardBuilder: React.FC<Props> = ({ onThemeChange, activeTheme, t, lang, set
 
                  <motion.img 
                   src={cld("https://res.cloudinary.com/dxw5mimqj/image/upload/v1770239914/Prayer_Beads_csdzwt.png", 100)} 
-                  className="card-floating-3d absolute -bottom-6 -right-6 w-24 opacity-60 z-10 pointer-events-none rotate-12"
+                  className="card-floating-3d floating-beads absolute -bottom-6 -right-6 w-24 opacity-60 z-10 pointer-events-none rotate-12"
                   style={{ translateZ: 40 }}
                 />
 
@@ -548,7 +556,7 @@ const CardBuilder: React.FC<Props> = ({ onThemeChange, activeTheme, t, lang, set
                 <motion.div style={{ translateZ: 80 }} className="relative z-30 h-full flex flex-col justify-between items-center text-center transform-gpu">
                   <div className="space-y-4">
                     <motion.div style={{ translateZ: 20 }} className="inline-block px-3 py-1 md:px-4 md:py-1.5 rounded-full bg-black/30 text-[9px] md:text-[10px] font-black text-yellow-400 tracking-[0.3em] uppercase border border-yellow-400/20 backdrop-blur-md shadow-lg">{t.builder.card.season}</motion.div>
-                    <motion.div style={{ translateZ: 50, color: activeTheme.accent }} className="arabic text-3xl md:text-5xl font-bold drop-shadow-[0_5px_15px_rgba(0,0,0,0.6)]">{t.builder.card.greeting}</motion.div>
+                    <motion.div style={{ translateZ: 50, color: activeTheme.accent }} className="download-arabic-greeting arabic text-3xl md:text-5xl font-bold drop-shadow-[0_5px_15px_rgba(0,0,0,0.6)]">{t.builder.card.greeting}</motion.div>
                   </div>
                   <div className="space-y-4 md:space-y-6 w-full">
                     <div className="space-y-1 md:space-y-2"><p className="text-[#9CA3AF] text-[10px] md:text-xs font-black uppercase tracking-[0.4em] drop-shadow-sm">{t.builder.card.specialFor}</p><motion.h3 style={{ translateZ: 100, fontFamily: 'Sora, sans-serif' }} className="download-target-you text-3xl sm:text-4xl md:text-5xl font-black leading-none break-words px-2 bg-gradient-to-r from-yellow-100 via-yellow-300 to-yellow-100 bg-clip-text text-transparent drop-shadow-[0_0_25px_rgba(253,224,71,0.6)]">{t.builder.card.you}</motion.h3></div>
@@ -560,7 +568,7 @@ const CardBuilder: React.FC<Props> = ({ onThemeChange, activeTheme, t, lang, set
                       </motion.div>
                     )}
                   </div>
-                  <motion.div style={{ translateZ: 60 }} className="mt-auto pt-2 md:pt-4 flex flex-col items-center">
+                  <motion.div style={{ translateZ: 60 }} className="download-sender-container mt-auto pt-2 md:pt-4 flex flex-col items-center">
                     <p className="text-[8px] md:text-[10px] text-gray-400 font-black uppercase tracking-[0.2em] mb-1 drop-shadow-sm">{t.builder.card.withLove}</p>
                     <div className="relative group/name">
                         <p className={`download-sender-name text-3xl md:text-5xl font-black italic tracking-wide text-[#FFD700] pb-1 relative z-10 ${lang === 'hi' ? 'font-hindi' : 'font-[Playfair_Display]'}`} style={{ textShadow: '0 4px 10px rgba(0, 0, 0, 0.5), 0 0 20px rgba(255, 215, 0, 0.6)' }}>{formData.from || "Your Name"}</p>
