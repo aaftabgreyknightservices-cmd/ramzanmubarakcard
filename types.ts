@@ -20,6 +20,7 @@ export interface CardData {
   includeBlessing: boolean;
   addSurprise: boolean;
   blessingIndex?: number;
+  lang?: string; // New: We now store language in the URL
 }
 
 export const THEMES: CardTheme[] = [
@@ -61,139 +62,129 @@ export const THEMES: CardTheme[] = [
   }
 ];
 
-// CRITICAL: This list matches translations.ts EXACTLY to ensure compression works.
-export const PRESET_WISHES = [
-  "May this Ramzan bring you peace, joy, and endless blessings, keeping you in my duas.",
-  "May this Ramzan shine the light of guidance in your home and your heart forever.",
-  "May this Ramzan fill your month with mercy and your heart with profound gratitude.",
-  "May this Ramzan be the month Allah accepts your fasts and answers your secret prayers.",
-  "May this Ramzan turn your heart into a vessel of Noor and fill your days with Barakah.",
-  "May this Ramzan heal what is broken within you and strengthen what is weak.",
-  "May this Ramzan bring you strength in every suhoor and peace in every iftar.",
-  "May this Ramzan become the beautiful turning point you have been waiting for.",
-  "May this Ramzan open the gates of Heaven for you and ensure the gates of Mercy never close.",
-  "May this Ramzan grant you 30 days of clemency, 720 hours of enlightenment, and 43,200 minutes of joy."
-];
+// --- V6 PROTOCOL: ALPHA-SEQUENCE NANO CODES ---
 
-export const BLESSINGS = [
-  "May the light of this month find the cracks in your heart and fill them with unshakeable peace.",
-  "I pray that every silent struggle you carry is answered with a mercy so vast it brings you to tears of joy.",
-  "May your home be a sanctuary where angels love to visit and where love is the only language spoken.",
-  "I asked Allah today to protect your smile and grant you the kind of serenity that the world can't take away.",
-  "May your fasts be a shield for your soul and your prayers a bridge to everything your heart desires."
-];
+// 1. Language Map (1 Char)
+const LANG_MAP: Record<string, string> = { 'en': 'e', 'ur': 'u', 'ru': 'r', 'ar': 'a', 'hi': 'h' };
+const REV_LANG_MAP: Record<string, string> = { 'e': 'en', 'u': 'ur', 'r': 'ru', 'a': 'ar', 'h': 'hi' };
+
+// 2. Theme Map (1 Char)
+const THEME_MAP = ['A', 'B', 'C', 'D']; // A=Theme 0, B=Theme 1...
+
+// 3. Base62 Dictionary for Indexing (0-9, a-z, A-Z)
+const BASE62 = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
 
 // Helper: Normalize text
 export const normalize = (str: string) => str.toLowerCase().replace(/[^a-z0-9]/g, '');
 
-// --- V5 PROTOCOL: MATRIX PACKING WITH SALT ---
-// Logic: (Salt << 14) | (Theme << 12) | (Blessing << 8) | WishIndex
-// Result: 3 Characters Max.
-
-export const compressData = (data: CardData): string => {
+/**
+ * Creates a "Nano-Link" based on the sender's edition.
+ * Structure: [Lang][Theme][Wish][Blessing][Salt]
+ * Example: "eA01x" (English, Theme 1, Wish 0, Blessing 1, Random Salt)
+ */
+export const compressData = (data: CardData, currentLang: string, allWishes: string[], allBlessings: string[]): string => {
   try {
-    // 1. Map Theme (0-3)
+    // 1. Map Language
+    const lCode = LANG_MAP[currentLang] || 'e';
+
+    // 2. Map Theme
     let tIdx = THEMES.findIndex(t => t.id === data.themeId);
     if (tIdx === -1) tIdx = 0;
+    const tCode = THEME_MAP[tIdx];
 
-    // 2. Map Blessing (0-6)
-    // 0 = No Blessing, 1..6 = Blessing Index + 1
-    const bVal = data.includeBlessing ? (data.blessingIndex || 0) + 1 : 0;
-
-    // 3. Map Wish (0-99)
-    // We normalize to ignore small typos or punctuation differences
+    // 3. Map Wish (Index or Custom)
     const normWish = normalize(data.wish);
-    const wIdx = PRESET_WISHES.findIndex(w => normalize(w) === normWish);
+    const wIdx = allWishes.findIndex(w => normalize(w) === normWish);
+    
+    // 4. Map Blessing
+    // If includeBlessing is false, we use index 0 (which we'll handle as 'no blessing' logic or just default)
+    // Actually, let's say if !includeBlessing, we map to a special char or just 0
+    const bIdx = data.includeBlessing ? (data.blessingIndex || 0) : 61; // 61 is 'Z' (reserved for None)
 
-    if (wIdx !== -1) {
-        // --- PRESET PATH ---
+    if (wIdx !== -1 && wIdx < 61) {
+        // --- PRESET PATH (Nano Code) ---
+        const wCode = BASE62[wIdx];
+        const bCode = BASE62[bIdx];
         
-        // UNIQUE SALT: Random number 0-3. 
-        // This ensures if you generate the same card twice, the code looks different 
-        // (e.g. '4k' vs 'a2') but decodes to the same content.
-        const salt = Math.floor(Math.random() * 4); 
+        // UNIQUE SALT: Generate random char to ensure "Ali" can send 2 diff cards
+        const salt = BASE62[Math.floor(Math.random() * 62)];
 
-        // BIT PACKING STRATEGY
-        // Salt (2 bits) | Theme (2 bits) | Blessing (4 bits) | Wish (7 bits)
-        // Total 15 bits. Max integer ~32768.
-        // Base36('32768') is 'pa8' (3 chars).
-        
-        const packedValue = (salt << 13) | (tIdx << 11) | (bVal << 7) | wIdx;
-        
-        return packedValue.toString(36);
+        return `${lCode}${tCode}${wCode}${bCode}${salt}`;
     } else {
-        // --- CUSTOM PATH (Fallback) ---
-        // Used only if user types a completely custom message
-        const configVal = tIdx + (bVal * 4);
-        const configChar = configVal.toString(36);
-        const safeWish = encodeURIComponent(data.wish).replace(/%20/g, '+');
-        return `~${configChar}.${safeWish}`;
+        // --- CUSTOM PATH (Compressed) ---
+        // Format: ~[Lang][Theme][Blessing].[CompressedText]
+        const safeWish = LZString.compressToEncodedURIComponent(data.wish);
+        const bCode = BASE62[bIdx];
+        return `~${lCode}${tCode}${bCode}.${safeWish}`;
     }
   } catch (e) {
-    console.error("V5 Compression Error", e);
-    return "0";
+    console.error("V6 Compression Error", e);
+    return "error";
   }
 };
 
-export const decompressData = (code: string, senderName: string = "A Friend"): CardData => {
+export const decompressData = (code: string, senderName: string, translations: any): CardData | null => {
   try {
-    let tIdx = 0;
-    let bVal = 1; 
-    let wish = PRESET_WISHES[0];
     const safeSender = senderName.replace(/_/g, ' ').replace(/-/g, ' ') || "A Friend";
-
+    
+    // Check if Custom
     if (code.startsWith('~')) {
-        // Custom Path
-        const parts = code.substring(1).split('.');
-        const configChar = parts[0];
-        const wishText = parts.slice(1).join('.');
-        const configVal = parseInt(configChar, 36);
-        tIdx = configVal % 4;
-        bVal = Math.floor(configVal / 4);
-        wish = decodeURIComponent(wishText.replace(/\+/g, '%20'));
+        // Format: ~[Lang][Theme][Blessing].[CompressedText]
+        const lChar = code[1];
+        const tChar = code[2];
+        const bChar = code[3];
+        const compressedWish = code.split('.')[1];
+
+        const lang = REV_LANG_MAP[lChar] || 'en';
+        const tIdx = THEME_MAP.indexOf(tChar);
+        const bIdx = BASE62.indexOf(bChar);
+        const wish = LZString.decompressFromEncodedURIComponent(compressedWish);
+
+        return {
+            from: safeSender,
+            to: 'You',
+            relationship: 'Friend',
+            wish: wish || "Ramadan Mubarak",
+            themeId: THEMES[tIdx]?.id || THEMES[0].id,
+            includeBlessing: bIdx !== 61,
+            blessingIndex: bIdx === 61 ? 0 : bIdx,
+            addSurprise: false,
+            lang: lang
+        };
     } else {
-        // Preset Path (Matrix Unpacking)
-        const val = parseInt(code, 36);
-        if (!isNaN(val)) {
-            // Unpack Bits
-            // We discard the Salt (top 2 bits) as it's just for visual uniqueness
-            
-            // Mask: 1111111 (127) gets the Wish (bottom 7 bits)
-            const wIdx = val & 127;
-            
-            // Shift right 7, Mask: 1111 (15) gets Blessing
-            const bRaw = (val >> 7) & 15;
-            
-            // Shift right 11, Mask: 11 (3) gets Theme
-            tIdx = (val >> 11) & 3;
-            
-            wish = PRESET_WISHES[wIdx] || PRESET_WISHES[0];
-            bVal = bRaw;
-        }
+        // --- PRESET PATH (Nano Code) ---
+        // Format: [Lang][Theme][Wish][Blessing][Salt]
+        // Length usually 5 chars
+        
+        const lChar = code[0];
+        const tChar = code[1];
+        const wChar = code[2];
+        const bChar = code[3];
+        // Salt is code[4], ignored during decode, just for uniqueness
+
+        const lang = REV_LANG_MAP[lChar] || 'en';
+        
+        // Load Dictionary based on Language Code found in URL
+        const dict = translations[lang];
+        
+        const tIdx = THEME_MAP.indexOf(tChar);
+        const wIdx = BASE62.indexOf(wChar);
+        const bIdx = BASE62.indexOf(bChar);
+
+        return {
+            from: safeSender,
+            to: 'You',
+            relationship: 'Friend',
+            wish: dict?.wishes[wIdx] || "Ramadan Mubarak",
+            themeId: THEMES[tIdx]?.id || THEMES[0].id,
+            includeBlessing: bIdx !== 61, // 61 ('Z') means no blessing
+            blessingIndex: bIdx === 61 ? 0 : bIdx,
+            addSurprise: false,
+            lang: lang
+        };
     }
-
-    return {
-        from: safeSender,
-        to: 'You',
-        relationship: 'Friend',
-        wish: wish,
-        themeId: THEMES[tIdx]?.id || THEMES[0].id,
-        includeBlessing: bVal > 0,
-        blessingIndex: bVal > 0 ? bVal - 1 : 0,
-        addSurprise: false
-    };
-
   } catch (e) {
-    console.error("V5 Decompression Error", e);
-    return {
-        from: senderName || "A Friend",
-        to: "You",
-        relationship: "Friend",
-        wish: PRESET_WISHES[0],
-        themeId: THEMES[0].id,
-        includeBlessing: true,
-        blessingIndex: 0,
-        addSurprise: false
-    };
+    console.error("V6 Decompression Error", e);
+    return null;
   }
 };

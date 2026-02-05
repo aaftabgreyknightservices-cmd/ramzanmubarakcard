@@ -67,6 +67,7 @@ const CardBuilder: React.FC<Props> = ({ onThemeChange, activeTheme, t, lang, set
   useEffect(() => {
     if (!initialData) {
         setFormData(prev => ({ ...prev, wish: t.wishes[0] }));
+        setWishIndex(0);
     }
   }, [lang]);
 
@@ -130,10 +131,18 @@ const CardBuilder: React.FC<Props> = ({ onThemeChange, activeTheme, t, lang, set
     setIsGenerating(true);
     await new Promise(resolve => setTimeout(resolve, 800));
     const payload = { ...formData, to: "You", relationship: "Friend", themeId: activeTheme.id };
-    const code = compressData(payload);
+    
+    // V6 Nano Compression: Pass current lang, wishes array, and blessings array
+    const code = compressData(payload, lang, t.wishes, t.blessings);
+    
+    // Sanitize sender name (Spaces become underscores, others removed)
     const safeSender = formData.from.trim().replace(/[\s.]+/g, '_');
+    
     const baseUrl = window.location.origin + window.location.pathname;
+    
+    // V6 Format: #Name.Code
     const shortUrl = `${baseUrl}#${safeSender}.${code}`;
+    
     setShareUrl(shortUrl);
     setIsGenerating(false);
     setTimeout(() => { document.getElementById('share-controls')?.scrollIntoView({ behavior: 'smooth', block: 'center' }); }, 100);
@@ -168,12 +177,10 @@ const CardBuilder: React.FC<Props> = ({ onThemeChange, activeTheme, t, lang, set
                 const card = clonedDoc.querySelector('.group\\/card') as HTMLElement;
                 
                 if (card) {
-                    // 1. FLATTEN 3D
                     card.style.transform = 'none';
                     card.style.boxShadow = 'none'; 
                     card.style.border = 'none'; 
                     
-                    // 2. HIGH-FIDELITY GRADIENT MAPPING
                     const gradientMap: Record<string, string> = {
                         'crescent-dream': 'linear-gradient(135deg, #0a0515 0%, #1a0a3d 50%, #0d1f3f 100%)',
                         'lantern-glow': 'linear-gradient(135deg, #150a05 0%, #2d1b0d 50%, #3f1f0d 100%)',
@@ -183,35 +190,20 @@ const CardBuilder: React.FC<Props> = ({ onThemeChange, activeTheme, t, lang, set
                     card.style.background = gradientMap[activeTheme.id] || `linear-gradient(135deg, ${activeTheme.primary}, ${activeTheme.secondary})`; 
                 }
 
-                // --- CRITICAL FIX: REMOVE INTERFERING 3D ELEMENTS ---
-                // We strictly REMOVE the Canon, Gift, Beads, and Stars from the export.
-                // This solves the alignment/collision issue completely.
-                // We keep ONLY the top-right Lantern and top-left Moon for framing.
-                const interferingSelectors = [
-                    '.floating-canon', 
-                    '.floating-gift', 
-                    '.floating-beads', 
-                    '.floating-star'
-                ];
-                
+                const interferingSelectors = ['.floating-canon', '.floating-gift', '.floating-beads', '.floating-star'];
                 interferingSelectors.forEach(selector => {
                     const el = clonedDoc.querySelector(selector) as HTMLElement;
-                    if (el) {
-                        el.style.display = 'none'; // HARD REMOVE for image export
-                    }
+                    if (el) el.style.display = 'none';
                 });
 
-                // --- PRESERVE FRAMING ELEMENTS ---
-                // Ensure the Lantern (Top Right) stays visible but safely positioned
                 const lantern = clonedDoc.querySelector('.floating-lantern') as HTMLElement;
                 if (lantern) {
                     lantern.style.top = '-10px';
                     lantern.style.right = '-10px';
-                    lantern.style.transform = 'scale(1.0)'; // Reset any 3D scaling
+                    lantern.style.transform = 'scale(1.0)'; 
                     lantern.style.opacity = '1';
                 }
 
-                // 3. FIX GOLD TEXT
                 const gradients = clonedDoc.querySelectorAll('.bg-clip-text');
                 gradients.forEach((el: any) => {
                     el.style.webkitBackgroundClip = 'initial'; 
@@ -221,7 +213,6 @@ const CardBuilder: React.FC<Props> = ({ onThemeChange, activeTheme, t, lang, set
                     el.style.textShadow = '0 2px 10px rgba(0,0,0,0.5)';
                 });
 
-                // 4. FIX "RAMZAN MUBARAK"
                 const greeting = clonedDoc.querySelector('.download-arabic-greeting') as HTMLElement;
                 if (greeting) {
                     greeting.style.color = '#FFD700';
@@ -229,15 +220,12 @@ const CardBuilder: React.FC<Props> = ({ onThemeChange, activeTheme, t, lang, set
                     greeting.style.opacity = '1';
                 }
 
-                // 5. FIX "YOU" TEXT
                 const youText = clonedDoc.querySelector('.download-target-you') as HTMLElement;
                 if (youText) { 
                     youText.style.color = '#FCD34D'; 
                     youText.style.textShadow = '0 0 25px rgba(253, 224, 71, 0.6), 0 2px 4px rgba(0,0,0,0.8)';
                 }
 
-                // 6. LAYOUT ENGINE: ENSURE SENDER NAME IS VISIBLE
-                // Since we removed the bottom assets, we can just center the name nicely
                 const senderContainer = clonedDoc.querySelector('.download-sender-container') as HTMLElement;
                 if (senderContainer) {
                     senderContainer.style.transform = 'translateY(-20px)';
@@ -245,7 +233,6 @@ const CardBuilder: React.FC<Props> = ({ onThemeChange, activeTheme, t, lang, set
                     senderContainer.style.zIndex = '50';
                 }
 
-                // 7. BRANDING
                 const watermark = clonedDoc.createElement('div');
                 watermark.className = 'absolute bottom-2 left-0 w-full text-center pointer-events-none';
                 watermark.innerHTML = `<span style="color: rgba(255,255,255,0.3); font-size: 9px; text-transform: uppercase; letter-spacing: 3px; font-weight: bold; font-family: sans-serif; text-shadow: 0 1px 2px rgba(0,0,0,0.8);">NoorCard • Ramzan 2026</span>`;
@@ -563,7 +550,7 @@ const CardBuilder: React.FC<Props> = ({ onThemeChange, activeTheme, t, lang, set
                     <motion.div style={{ translateZ: 50, color: activeTheme.accent }} className="download-arabic-greeting arabic text-3xl md:text-5xl font-bold drop-shadow-[0_5px_15px_rgba(0,0,0,0.6)]">{t.builder.card.greeting}</motion.div>
                   </div>
                   <div className="space-y-4 md:space-y-6 w-full">
-                    <div className="space-y-1 md:space-y-2"><p className="text-[#9CA3AF] text-[10px] md:text-xs font-black uppercase tracking-[0.4em] drop-shadow-sm">{t.builder.card.specialFor}</p><motion.h3 style={{ translateZ: 100, fontFamily: 'Sora, sans-serif' }} className="download-target-you text-3xl sm:text-4xl md:text-5xl font-black leading-none break-words px-2 bg-gradient-to-r from-yellow-100 via-yellow-300 to-yellow-100 bg-clip-text text-transparent drop-shadow-[0_0_25px_rgba(253,224,71,0.6)]">{t.builder.card.you}</motion.h3></div>
+                    <div className="space-y-1 md:space-y-2"><p className="text-[#9CA3AF] text-[10px] md:text-xs font-black uppercase tracking-[0.4em] drop-shadow-sm">{t.builder.card.specialFor}</p><motion.h3 style={{ translateZ: 100, fontFamily: 'Sora, sans-serif' }} className="download-target-you text-3xl sm:text-4xl md:text-5xl font-black leading-none break-words px-2 bg-gradient-to-r from-yellow-100 via-yellow-300 to-yellow-100 bg-clip-text text-transparent drop-shadow-[0_0_25px_rgba(253,204,71,0.6)]">{t.builder.card.you}</motion.h3></div>
                     <motion.div style={{ translateZ: 40 }} className="relative px-2 md:px-8 py-2"><p className={`text-[#F9FAFB] text-lg sm:text-xl md:text-2xl leading-relaxed drop-shadow-lg italic font-normal tracking-wide ${lang === 'ur' ? 'font-urdu' : lang === 'hi' ? 'font-hindi' : 'font-serif'}`}>"{formData.wish || "May this Ramzan bring you peace..."}"</p></motion.div>
                     {formData.includeBlessing && (
                       <motion.div key={formData.blessingIndex} initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} style={{ translateZ: 30 }} className="pt-4 md:pt-6 border-t border-white/10 group/blessing">
