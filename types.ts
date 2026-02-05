@@ -84,13 +84,14 @@ export const BLESSINGS = [
 ];
 
 // Helper: Normalize text
-export const normalize = (str: string) => str.toLowerCase().replace(/[^a-z0-9]/g, '');
+// Updated to be unicode-safe (just strip whitespace) so it works for Arabic/Hindi/Urdu
+export const normalize = (str: string) => str.toLowerCase().replace(/\s+/g, '');
 
 // --- V5 PROTOCOL: MATRIX PACKING WITH SALT ---
 // Logic: (Salt << 14) | (Theme << 12) | (Blessing << 8) | WishIndex
 // Result: 3 Characters Max.
 
-export const compressData = (data: CardData): string => {
+export const compressData = (data: CardData, lang?: string, wishes?: string[], blessings?: string[]): string => {
   try {
     // 1. Map Theme (0-3)
     let tIdx = THEMES.findIndex(t => t.id === data.themeId);
@@ -101,9 +102,10 @@ export const compressData = (data: CardData): string => {
     const bVal = data.includeBlessing ? (data.blessingIndex || 0) + 1 : 0;
 
     // 3. Map Wish (0-99)
-    // We normalize to ignore small typos or punctuation differences
+    // Use provided wishes array if available (for localized matching), otherwise fallback to PRESET_WISHES
+    const lookupWishes = wishes || PRESET_WISHES;
     const normWish = normalize(data.wish);
-    const wIdx = PRESET_WISHES.findIndex(w => normalize(w) === normWish);
+    const wIdx = lookupWishes.findIndex(w => normalize(w) === normWish);
 
     if (wIdx !== -1) {
         // --- PRESET PATH ---

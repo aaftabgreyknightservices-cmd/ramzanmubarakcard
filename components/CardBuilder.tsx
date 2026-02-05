@@ -1,8 +1,9 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence, useMotionValue, useSpring, useTransform, useMotionTemplate } from 'framer-motion';
-import { Share2, Download, Copy, Check, Sparkles, RefreshCw, Send, Heart, ChevronLeft, ChevronRight, Shuffle, PenTool, Wand2 } from 'lucide-react';
+import { Share2, Download, Copy, Check, Sparkles, RefreshCw, Send, Heart, ChevronLeft, ChevronRight, Shuffle, PenTool, Wand2, Lock, Unlock } from 'lucide-react';
 import html2canvas from 'html2canvas';
+import confetti from 'canvas-confetti';
 import { CardData, CardTheme, THEMES, compressData, normalize } from '../types';
 import { Language } from '../translations';
 import { NativeAdUnit, DisplayAdUnit } from './AdUnits';
@@ -53,6 +54,36 @@ const CardBuilder: React.FC<Props> = ({ onThemeChange, activeTheme, t, lang, set
 
   const [wishIndex, setWishIndex] = useState(0);
   
+  // --- VIRALITY LOCK LOGIC ---
+  const REQUIRED_SHARES = 3;
+  const [shareCount, setShareCount] = useState(() => {
+     // Persist progress to localStorage so refresh doesn't reset it
+     if (typeof window !== 'undefined') {
+         return parseInt(localStorage.getItem('noor_shares') || '0');
+     }
+     return 0;
+  });
+  const isDownloadUnlocked = shareCount >= REQUIRED_SHARES;
+
+  const registerShareAction = () => {
+     if (shareCount < REQUIRED_SHARES) {
+         const newCount = shareCount + 1;
+         setShareCount(newCount);
+         localStorage.setItem('noor_shares', newCount.toString());
+         
+         if (newCount === REQUIRED_SHARES) {
+             // UNLOCK CELEBRATION
+             confetti({
+                 particleCount: 150,
+                 spread: 70,
+                 origin: { y: 0.8 },
+                 colors: ['#FFD700', '#FFA500', '#FFFFFF']
+             });
+             if (navigator.vibrate) navigator.vibrate([100, 50, 100]);
+         }
+     }
+  };
+
   // --- PRE-FILL LOGIC ---
   useEffect(() => {
     if (initialData) {
@@ -67,6 +98,7 @@ const CardBuilder: React.FC<Props> = ({ onThemeChange, activeTheme, t, lang, set
   useEffect(() => {
     if (!initialData) {
         setFormData(prev => ({ ...prev, wish: t.wishes[0] }));
+        setWishIndex(0);
     }
   }, [lang]);
 
@@ -130,18 +162,32 @@ const CardBuilder: React.FC<Props> = ({ onThemeChange, activeTheme, t, lang, set
     setIsGenerating(true);
     await new Promise(resolve => setTimeout(resolve, 800));
     const payload = { ...formData, to: "You", relationship: "Friend", themeId: activeTheme.id };
-    const code = compressData(payload);
+    
+    // V6 Nano Compression: Pass current lang, wishes array, and blessings array
+    const code = compressData(payload, lang, t.wishes, t.blessings);
+    
+    // Sanitize sender name (Spaces become underscores, others removed)
     const safeSender = formData.from.trim().replace(/[\s.]+/g, '_');
+    
     const baseUrl = window.location.origin + window.location.pathname;
+    
+    // V6 Format: #Name.Code
     const shortUrl = `${baseUrl}#${safeSender}.${code}`;
+    
     setShareUrl(shortUrl);
     setIsGenerating(false);
     setTimeout(() => { document.getElementById('share-controls')?.scrollIntoView({ behavior: 'smooth', block: 'center' }); }, 100);
   };
 
-  const copyToClipboard = () => { navigator.clipboard.writeText(shareUrl); setCopied(true); setTimeout(() => setCopied(false), 2000); };
+  const copyToClipboard = () => { 
+      navigator.clipboard.writeText(shareUrl); 
+      setCopied(true); 
+      setTimeout(() => setCopied(false), 2000); 
+      registerShareAction(); // Count as share
+  };
   
   const handleNativeShare = async () => {
+    registerShareAction(); // Count as share immediately on click
     const shareData = { title: 'Ramzan Mubarak 🌙', text: `A special 3D gift card from ${formData.from}. Open to reveal your blessing!`, url: shareUrl };
     if (navigator.share) { try { await navigator.share(shareData); } catch (err) { console.log("Share canceled"); } } else { copyToClipboard(); }
   };
@@ -168,12 +214,10 @@ const CardBuilder: React.FC<Props> = ({ onThemeChange, activeTheme, t, lang, set
                 const card = clonedDoc.querySelector('.group\\/card') as HTMLElement;
                 
                 if (card) {
-                    // 1. FLATTEN 3D
                     card.style.transform = 'none';
                     card.style.boxShadow = 'none'; 
                     card.style.border = 'none'; 
                     
-                    // 2. HIGH-FIDELITY GRADIENT MAPPING
                     const gradientMap: Record<string, string> = {
                         'crescent-dream': 'linear-gradient(135deg, #0a0515 0%, #1a0a3d 50%, #0d1f3f 100%)',
                         'lantern-glow': 'linear-gradient(135deg, #150a05 0%, #2d1b0d 50%, #3f1f0d 100%)',
@@ -183,35 +227,20 @@ const CardBuilder: React.FC<Props> = ({ onThemeChange, activeTheme, t, lang, set
                     card.style.background = gradientMap[activeTheme.id] || `linear-gradient(135deg, ${activeTheme.primary}, ${activeTheme.secondary})`; 
                 }
 
-                // --- CRITICAL FIX: REMOVE INTERFERING 3D ELEMENTS ---
-                // We strictly REMOVE the Canon, Gift, Beads, and Stars from the export.
-                // This solves the alignment/collision issue completely.
-                // We keep ONLY the top-right Lantern and top-left Moon for framing.
-                const interferingSelectors = [
-                    '.floating-canon', 
-                    '.floating-gift', 
-                    '.floating-beads', 
-                    '.floating-star'
-                ];
-                
+                const interferingSelectors = ['.floating-canon', '.floating-gift', '.floating-beads', '.floating-star'];
                 interferingSelectors.forEach(selector => {
                     const el = clonedDoc.querySelector(selector) as HTMLElement;
-                    if (el) {
-                        el.style.display = 'none'; // HARD REMOVE for image export
-                    }
+                    if (el) el.style.display = 'none';
                 });
 
-                // --- PRESERVE FRAMING ELEMENTS ---
-                // Ensure the Lantern (Top Right) stays visible but safely positioned
                 const lantern = clonedDoc.querySelector('.floating-lantern') as HTMLElement;
                 if (lantern) {
                     lantern.style.top = '-10px';
                     lantern.style.right = '-10px';
-                    lantern.style.transform = 'scale(1.0)'; // Reset any 3D scaling
+                    lantern.style.transform = 'scale(1.0)'; 
                     lantern.style.opacity = '1';
                 }
 
-                // 3. FIX GOLD TEXT
                 const gradients = clonedDoc.querySelectorAll('.bg-clip-text');
                 gradients.forEach((el: any) => {
                     el.style.webkitBackgroundClip = 'initial'; 
@@ -221,7 +250,6 @@ const CardBuilder: React.FC<Props> = ({ onThemeChange, activeTheme, t, lang, set
                     el.style.textShadow = '0 2px 10px rgba(0,0,0,0.5)';
                 });
 
-                // 4. FIX "RAMZAN MUBARAK"
                 const greeting = clonedDoc.querySelector('.download-arabic-greeting') as HTMLElement;
                 if (greeting) {
                     greeting.style.color = '#FFD700';
@@ -229,15 +257,12 @@ const CardBuilder: React.FC<Props> = ({ onThemeChange, activeTheme, t, lang, set
                     greeting.style.opacity = '1';
                 }
 
-                // 5. FIX "YOU" TEXT
                 const youText = clonedDoc.querySelector('.download-target-you') as HTMLElement;
                 if (youText) { 
                     youText.style.color = '#FCD34D'; 
                     youText.style.textShadow = '0 0 25px rgba(253, 224, 71, 0.6), 0 2px 4px rgba(0,0,0,0.8)';
                 }
 
-                // 6. LAYOUT ENGINE: ENSURE SENDER NAME IS VISIBLE
-                // Since we removed the bottom assets, we can just center the name nicely
                 const senderContainer = clonedDoc.querySelector('.download-sender-container') as HTMLElement;
                 if (senderContainer) {
                     senderContainer.style.transform = 'translateY(-20px)';
@@ -245,7 +270,6 @@ const CardBuilder: React.FC<Props> = ({ onThemeChange, activeTheme, t, lang, set
                     senderContainer.style.zIndex = '50';
                 }
 
-                // 7. BRANDING
                 const watermark = clonedDoc.createElement('div');
                 watermark.className = 'absolute bottom-2 left-0 w-full text-center pointer-events-none';
                 watermark.innerHTML = `<span style="color: rgba(255,255,255,0.3); font-size: 9px; text-transform: uppercase; letter-spacing: 3px; font-weight: bold; font-family: sans-serif; text-shadow: 0 1px 2px rgba(0,0,0,0.8);">NoorCard • Ramzan 2026</span>`;
@@ -475,9 +499,45 @@ const CardBuilder: React.FC<Props> = ({ onThemeChange, activeTheme, t, lang, set
                 <button onClick={copyToClipboard} className="p-3 hover:bg-white/10 rounded-xl transition-all active:scale-90 z-10">{copied ? <Check size={20} className="text-green-400" /> : <Copy size={20} />}</button>
                 <div className="absolute right-0 top-0 bottom-0 w-24 bg-gradient-to-l from-green-500/10 to-transparent pointer-events-none" />
               </div>
+
+              {/* ACTION GRID: SHARE & DOWNLOAD */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <button onClick={handleNativeShare} className="py-4 px-6 bg-[#25D366] text-white font-black rounded-2xl flex items-center justify-center gap-3 hover:brightness-110 shadow-lg transition-all"><Send size={20} /> <span className="text-sm">{t.builder.action.whatsapp}</span></button>
-                <button onClick={downloadImage} className="py-4 px-6 bg-white/10 text-white font-black rounded-2xl flex items-center justify-center gap-3 hover:bg-white/20 transition-all border border-white/10"><Download size={20} /> <span className="text-sm">{t.builder.action.download}</span></button>
+                <button onClick={handleNativeShare} className="relative py-4 px-6 bg-[#25D366] text-white font-black rounded-2xl flex items-center justify-center gap-3 hover:brightness-110 shadow-lg transition-all active:scale-[0.98] group overflow-hidden">
+                    <Send size={20} className="group-hover:-translate-y-1 group-hover:translate-x-1 transition-transform" /> 
+                    <span className="text-sm">{t.builder.action.whatsapp}</span>
+                    <div className="absolute inset-0 bg-white/20 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700"></div>
+                </button>
+
+                {isDownloadUnlocked ? (
+                    <motion.button 
+                        initial={{ scale: 0.9, opacity: 0 }}
+                        animate={{ scale: 1, opacity: 1 }}
+                        onClick={downloadImage} 
+                        className="py-4 px-6 bg-gradient-to-r from-yellow-400 to-amber-500 text-black font-black rounded-2xl flex items-center justify-center gap-3 hover:shadow-[0_0_20px_rgba(255,215,0,0.4)] transition-all border border-yellow-300/50 active:scale-[0.98]"
+                    >
+                        <Download size={20} /> 
+                        <span className="text-sm">{t.builder.action.download}</span>
+                        <Unlock size={16} className="opacity-50" />
+                    </motion.button>
+                ) : (
+                    <button 
+                        disabled 
+                        className="relative py-4 px-6 bg-black/40 text-gray-500 font-bold rounded-2xl flex flex-col items-center justify-center gap-1 border border-white/5 cursor-not-allowed group"
+                    >
+                        <div className="flex items-center gap-2">
+                             <Lock size={16} />
+                             <span className="text-sm">Download Locked</span>
+                        </div>
+                        <div className="flex items-center gap-1">
+                             <span className="text-[10px] text-yellow-500/80 uppercase tracking-widest">Share to Unlock: {shareCount}/{REQUIRED_SHARES}</span>
+                             <div className="flex gap-1 ml-1">
+                                {[...Array(REQUIRED_SHARES)].map((_, i) => (
+                                    <div key={i} className={`w-1.5 h-1.5 rounded-full ${i < shareCount ? 'bg-yellow-400' : 'bg-gray-700'}`}></div>
+                                ))}
+                             </div>
+                        </div>
+                    </button>
+                )}
               </div>
               <DisplayAdUnit size="medium" />
             </motion.div>
