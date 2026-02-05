@@ -148,22 +148,79 @@ const CardBuilder: React.FC<Props> = ({ onThemeChange, activeTheme, t, lang, set
 
   const downloadImage = async () => {
     if (!cardRef.current) return;
-    mouseX.set(0); mouseY.set(0);
+    
+    // Reset 3D State for Clean Capture
+    mouseX.set(0); 
+    mouseY.set(0);
+    
     setTimeout(async () => {
       try {
-        const canvas = await html2canvas(cardRef.current!, { backgroundColor: null, scale: 4, useCORS: true, allowTaint: true, onclone: (clonedDoc) => {
-            const youText = clonedDoc.querySelector('.download-target-you') as HTMLElement;
-            if (youText) { youText.style.backgroundImage = 'none'; youText.style.webkitBackgroundClip = 'initial'; youText.style.color = '#FFD700'; }
-            const noiseLayer = clonedDoc.querySelector('.download-noise-overlay') as HTMLElement;
-            if (noiseLayer) { noiseLayer.style.backgroundImage = 'none'; noiseLayer.style.background = 'radial-gradient(circle, rgba(255,255,255,0.05) 0%, transparent 80%)'; }
-            // Hide 3D floating elements during export as they might glitch in 2D capture
-            const floatingElements = clonedDoc.querySelectorAll('.card-floating-3d');
-            floatingElements.forEach(el => (el as HTMLElement).style.display = 'none');
-          }
+        const canvas = await html2canvas(cardRef.current!, { 
+            backgroundColor: null, 
+            scale: 4, // Ultra-High Resolution
+            useCORS: true, 
+            allowTaint: true,
+            logging: false,
+            onclone: (clonedDoc) => {
+                const card = clonedDoc.querySelector('.group\\/card') as HTMLElement;
+                if (card) {
+                    card.style.transform = 'none'; // Flatten
+                    card.style.boxShadow = 'none'; // Remove CSS shadow (often glitchy in canvas)
+                    card.style.border = '1px solid rgba(255,255,255,0.1)';
+                    // Ensure theme gradient is solid
+                    card.style.background = `linear-gradient(135deg, ${activeTheme.primary}, ${activeTheme.secondary})`; 
+                }
+
+                // OPTIMIZE: "You" Text (Gold Effect)
+                const youText = clonedDoc.querySelector('.download-target-you') as HTMLElement;
+                if (youText) { 
+                    youText.style.backgroundImage = 'none'; 
+                    youText.style.webkitBackgroundClip = 'initial'; 
+                    youText.style.backgroundClip = 'initial';
+                    youText.style.color = '#FFD700'; // Solid Gold
+                    youText.style.textShadow = '0 0 25px rgba(255, 215, 0, 0.8), 0 2px 4px rgba(0,0,0,0.8)';
+                }
+
+                // OPTIMIZE: Sender Name
+                const senderName = clonedDoc.querySelector('.download-sender-name') as HTMLElement;
+                if (senderName) {
+                    senderName.style.textShadow = '0 2px 10px rgba(0,0,0,0.8)';
+                    senderName.style.transform = 'none';
+                    senderName.style.color = '#FFD700';
+                }
+                
+                // OPTIMIZE: Noise Layer
+                const noiseLayer = clonedDoc.querySelector('.download-noise-overlay') as HTMLElement;
+                if (noiseLayer) { 
+                    noiseLayer.style.backgroundImage = 'none'; 
+                    noiseLayer.style.background = 'radial-gradient(circle at center, rgba(255,255,255,0.15) 0%, transparent 70%)'; 
+                }
+
+                // SUPER ENHANCE: Render 3D Elements in 2D
+                const floatingElements = clonedDoc.querySelectorAll('.card-floating-3d');
+                floatingElements.forEach((el) => {
+                    const hEl = el as HTMLElement;
+                    hEl.style.display = 'block'; // Force Visible
+                    hEl.style.transform = 'scale(1.1)'; // Slight scale up
+                    hEl.style.filter = 'drop-shadow(0 15px 15px rgba(0,0,0,0.5))'; // Add deep shadow
+                    hEl.style.opacity = '1';
+                });
+
+                // BRANDING: Add Watermark
+                const watermark = clonedDoc.createElement('div');
+                watermark.className = 'absolute bottom-3 left-0 w-full text-center pointer-events-none';
+                watermark.innerHTML = `<span style="color: rgba(255,255,255,0.5); font-size: 10px; text-transform: uppercase; letter-spacing: 4px; font-weight: bold; font-family: sans-serif; text-shadow: 0 1px 2px rgba(0,0,0,0.5);">Noor Card • Ramzan 2026</span>`;
+                card?.appendChild(watermark);
+            }
         });
-        const link = document.createElement('a'); link.download = `NoorCard-${formData.from || 'Ramzan'}.png`; link.href = canvas.toDataURL('image/png', 1.0); link.click();
+
+        const link = document.createElement('a'); 
+        link.download = `NoorCard-${formData.from || 'Ramzan'}.png`; 
+        link.href = canvas.toDataURL('image/png', 1.0); 
+        link.click();
+
       } catch (err) { console.error("Export failed", err); }
-    }, 100);
+    }, 250); // Slight delay for React state settle
   };
 
   const languages: { code: Language; label: string }[] = [ { code: 'en', label: 'English' }, { code: 'ru', label: 'Roman' }, { code: 'hi', label: 'हिंदी' }, { code: 'ur', label: 'اردو' }, { code: 'ar', label: 'العربية' } ];
