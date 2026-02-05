@@ -149,67 +149,90 @@ const CardBuilder: React.FC<Props> = ({ onThemeChange, activeTheme, t, lang, set
   const downloadImage = async () => {
     if (!cardRef.current) return;
     
-    // Reset 3D State for Clean Capture
+    // 1. FREEZE STATE FOR CAPTURE
+    // Temporarily reset 3D rotation to 0 for a flat capture
+    const wasHovered = isHovered;
     mouseX.set(0); 
     mouseY.set(0);
+    setIsHovered(false);
     
-    setTimeout(async () => {
-      try {
-        const canvas = await html2canvas(cardRef.current!, { 
+    // Wait for smooth springs to settle to 0
+    await new Promise(resolve => setTimeout(resolve, 400));
+    
+    // Haptic Feedback
+    if (navigator.vibrate) navigator.vibrate(50);
+
+    try {
+        const canvas = await html2canvas(cardRef.current, { 
             backgroundColor: null, 
-            scale: 4, // Ultra-High Resolution
+            scale: 3, // High Resolution Retina
             useCORS: true, 
             allowTaint: true,
             logging: false,
             onclone: (clonedDoc) => {
-                const card = clonedDoc.querySelector('.group\\/card') as HTMLElement;
+                const cardContainer = clonedDoc.querySelector('#card-preview');
+                const card = cardContainer?.querySelector('.group\\/card') as HTMLElement;
+                
                 if (card) {
-                    card.style.transform = 'none'; // Flatten
-                    card.style.boxShadow = 'none'; // Remove CSS shadow (often glitchy in canvas)
-                    card.style.border = '1px solid rgba(255,255,255,0.1)';
-                    // Ensure theme gradient is solid
+                    // --- FLATTEN 3D ---
+                    // Remove 3D transforms to prevent "tilted" capture artifacts
+                    card.style.transform = 'none';
+                    card.style.boxShadow = 'none'; 
+                    card.style.border = 'none'; 
+                    
+                    // --- FORCE HIGH-FIDELITY BACKGROUND ---
+                    // html2canvas fails with Tailwind bg-gradient-to-br, so we inline it manually
                     card.style.background = `linear-gradient(135deg, ${activeTheme.primary}, ${activeTheme.secondary})`; 
+                    
+                    // --- LAYOUT SAFETY ---
+                    // Add padding to prevent sender name hitting the bottom
+                    card.style.paddingBottom = '50px';
                 }
 
-                // OPTIMIZE: "You" Text (Gold Effect)
+                // --- FIX GOLD TEXT (REPLACE GRADIENT WITH SOLID + SHADOW) ---
+                // "background-clip: text" renders transparent in html2canvas. 
+                // We replace it with solid gold and drop-shadow to simulate glow.
+                const gradients = clonedDoc.querySelectorAll('.bg-clip-text');
+                gradients.forEach((el: any) => {
+                    el.style.webkitBackgroundClip = 'initial'; 
+                    el.style.backgroundClip = 'initial';
+                    el.style.backgroundImage = 'none';
+                    el.style.color = '#FFD700'; // Solid Gold
+                    el.style.textShadow = '0 2px 10px rgba(0,0,0,0.5)';
+                });
+
+                // --- FIX "YOU" TEXT ---
                 const youText = clonedDoc.querySelector('.download-target-you') as HTMLElement;
                 if (youText) { 
-                    youText.style.backgroundImage = 'none'; 
-                    youText.style.webkitBackgroundClip = 'initial'; 
-                    youText.style.backgroundClip = 'initial';
-                    youText.style.color = '#FFD700'; // Solid Gold
-                    youText.style.textShadow = '0 0 25px rgba(255, 215, 0, 0.8), 0 2px 4px rgba(0,0,0,0.8)';
+                    youText.style.color = '#FCD34D'; // Lighter Gold
+                    youText.style.textShadow = '0 0 25px rgba(253, 224, 71, 0.6), 0 2px 4px rgba(0,0,0,0.8)';
+                    // Scale it up slightly to match the "popped out" Z-depth look
+                    youText.style.transform = 'scale(1.1)'; 
                 }
 
-                // OPTIMIZE: Sender Name
-                const senderName = clonedDoc.querySelector('.download-sender-name') as HTMLElement;
-                if (senderName) {
-                    senderName.style.textShadow = '0 2px 10px rgba(0,0,0,0.8)';
-                    senderName.style.transform = 'none';
-                    senderName.style.color = '#FFD700';
-                }
-                
-                // OPTIMIZE: Noise Layer
-                const noiseLayer = clonedDoc.querySelector('.download-noise-overlay') as HTMLElement;
-                if (noiseLayer) { 
-                    noiseLayer.style.backgroundImage = 'none'; 
-                    noiseLayer.style.background = 'radial-gradient(circle at center, rgba(255,255,255,0.15) 0%, transparent 70%)'; 
-                }
-
-                // SUPER ENHANCE: Render 3D Elements in 2D
+                // --- FIX 3D ELEMENTS (RESCALE) ---
+                // Elements with translateZ look big in app but small in 2D capture.
+                // We manually scale them up here to match the user's perception.
                 const floatingElements = clonedDoc.querySelectorAll('.card-floating-3d');
                 floatingElements.forEach((el) => {
                     const hEl = el as HTMLElement;
-                    hEl.style.display = 'block'; // Force Visible
-                    hEl.style.transform = 'scale(1.1)'; // Slight scale up
-                    hEl.style.filter = 'drop-shadow(0 15px 15px rgba(0,0,0,0.5))'; // Add deep shadow
+                    hEl.style.transform = 'scale(1.2)'; // Boost size by 20%
+                    hEl.style.filter = 'drop-shadow(0 15px 25px rgba(0,0,0,0.5))'; // Deep shadow
                     hEl.style.opacity = '1';
                 });
 
-                // BRANDING: Add Watermark
+                // --- PREVENT OVERLAPS ---
+                const senderName = clonedDoc.querySelector('.download-sender-name') as HTMLElement;
+                if (senderName) {
+                    // Ensure the sender name stays on top of any decorations
+                    senderName.style.position = 'relative';
+                    senderName.style.zIndex = '50'; 
+                }
+
+                // --- BRANDING ---
                 const watermark = clonedDoc.createElement('div');
-                watermark.className = 'absolute bottom-3 left-0 w-full text-center pointer-events-none';
-                watermark.innerHTML = `<span style="color: rgba(255,255,255,0.5); font-size: 10px; text-transform: uppercase; letter-spacing: 4px; font-weight: bold; font-family: sans-serif; text-shadow: 0 1px 2px rgba(0,0,0,0.5);">Noor Card • Ramzan 2026</span>`;
+                watermark.className = 'absolute bottom-2 left-0 w-full text-center pointer-events-none';
+                watermark.innerHTML = `<span style="color: rgba(255,255,255,0.4); font-size: 10px; text-transform: uppercase; letter-spacing: 3px; font-weight: bold; font-family: sans-serif; text-shadow: 0 1px 2px rgba(0,0,0,0.8);">NoorCard • Ramzan 2026</span>`;
                 card?.appendChild(watermark);
             }
         });
@@ -219,8 +242,9 @@ const CardBuilder: React.FC<Props> = ({ onThemeChange, activeTheme, t, lang, set
         link.href = canvas.toDataURL('image/png', 1.0); 
         link.click();
 
-      } catch (err) { console.error("Export failed", err); }
-    }, 250); // Slight delay for React state settle
+    } catch (err) { 
+        console.error("Export failed", err); 
+    }
   };
 
   const languages: { code: Language; label: string }[] = [ { code: 'en', label: 'English' }, { code: 'ru', label: 'Roman' }, { code: 'hi', label: 'हिंदी' }, { code: 'ur', label: 'اردو' }, { code: 'ar', label: 'العربية' } ];
