@@ -10,7 +10,6 @@ import Hero from './components/Hero';
 import CardBuilder from './components/CardBuilder';
 import Footer from './components/Footer';
 import EidCountdown from './components/EidCountdown';
-import ReceiverView from './components/ReceiverView';
 import { DisplayAdUnit } from './components/AdUnits';
 
 // --- NEW COMPONENT: Festive 3D Asset Strip ---
@@ -98,7 +97,7 @@ const App: React.FC = () => {
   }, [lang]);
 
   useEffect(() => {
-    // V6 Hash Parsing Protocol
+    // V5 Hash Parsing Protocol (Bitwise Matrix)
     const rawHash = window.location.hash.substring(1); // Remove #
     
     if (rawHash) {
@@ -117,9 +116,8 @@ const App: React.FC = () => {
        }
 
        if (code) {
-          console.log("Processing Shared Card V6:", { sender, code });
-          // Note: We pass the full translations object because decompressData needs to find the correct Wish from the correct Language
-          const decoded = decompressData(code, sender, translations);
+          console.log("Processing Shared Card:", { sender, code });
+          const decoded = decompressData(code, sender);
           
           if (decoded) {
               setInitialData(decoded);
@@ -127,32 +125,42 @@ const App: React.FC = () => {
               // 1. Set Theme Immediately
               const theme = THEMES.find(t => t.id === decoded.themeId) || THEMES[0];
               setActiveTheme(theme);
-              
-              // 2. Set Language from Code (if present)
-              if (decoded.lang && translations[decoded.lang as Language]) {
-                  setLang(decoded.lang as Language);
-              }
           }
        }
     }
   }, []);
 
-  const t = translations[lang];
+  // SCROLL LOGIC: Smart scrolling depending on device
+  useEffect(() => {
+    if (initialData) {
+        const scrollToTarget = () => {
+            const isMobile = window.innerWidth < 1024;
+            const cardPreview = document.getElementById('card-preview');
+            const builderSection = document.getElementById('builder');
+            
+            if (isMobile && cardPreview) {
+                 // On mobile, the card is at the bottom. Scroll to center it in viewport so users see the gift immediately.
+                 cardPreview.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            } else if (builderSection) {
+                 // On desktop, align the section top. The card is visible in the right column.
+                 builderSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+        };
 
-  // If initialData exists (Receiver Mode), show Receiver View
-  if (initialData) {
-      return (
-         <ReceiverView 
-            data={initialData} 
-            onCreateNew={() => {
-                setInitialData(null);
-                window.history.pushState(null, "", window.location.pathname);
-            }} 
-            t={t.receiver} 
-            lang={lang}
-         />
-      );
-  }
+        // Trigger sequence to ensure scroll happens after layout settles
+        const t0 = setTimeout(scrollToTarget, 100);
+        const t1 = setTimeout(scrollToTarget, 500);
+        const t2 = setTimeout(scrollToTarget, 1000);
+        
+        return () => {
+            clearTimeout(t0);
+            clearTimeout(t1);
+            clearTimeout(t2);
+        };
+    }
+  }, [initialData]);
+
+  const t = translations[lang];
 
   return (
     <div className={`min-h-screen bg-gradient-to-b ${activeTheme.gradient} text-white transition-all duration-1000`}>
@@ -176,7 +184,7 @@ const App: React.FC = () => {
                {t.builder.title}
             </h2>
             <p className="text-gray-400 max-w-2xl mx-auto text-lg md:text-xl font-medium italic">
-               {t.builder.subtitle}
+               {initialData ? "Edit this card to make it yours, or share it as is." : t.builder.subtitle}
             </p>
           </motion.div>
           
@@ -186,12 +194,12 @@ const App: React.FC = () => {
             t={t}
             lang={lang}
             setLang={setLang}
-            initialData={null} // Force fresh builder state
+            initialData={initialData}
           />
         </div>
       </section>
 
-      {/* Festive 3D PNG Marquee Strip */}
+      {/* NEW: Festive 3D PNG Marquee Strip */}
       <FestiveStrip />
 
       <Footer />
