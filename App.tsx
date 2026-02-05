@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { CardData, CardTheme, THEMES, decompressData } from './types';
 import { translations, Language } from './translations';
 import { cld } from './utils/images';
@@ -10,6 +10,7 @@ import Hero from './components/Hero';
 import CardBuilder from './components/CardBuilder';
 import Footer from './components/Footer';
 import EidCountdown from './components/EidCountdown';
+import ReceiverView from './components/ReceiverView';
 import { DisplayAdUnit } from './components/AdUnits';
 
 // --- NEW COMPONENT: Festive 3D Asset Strip ---
@@ -77,6 +78,7 @@ const FestiveStrip = () => {
 const App: React.FC = () => {
   const [activeTheme, setActiveTheme] = useState<CardTheme>(THEMES[0]);
   const [initialData, setInitialData] = useState<CardData | null>(null);
+  const [viewMode, setViewMode] = useState<'hero' | 'receiver' | 'builder'>('hero');
   
   // Language State
   const [lang, setLang] = useState<Language>('en');
@@ -101,10 +103,7 @@ const App: React.FC = () => {
     const rawHash = window.location.hash.substring(1); // Remove #
     
     if (rawHash) {
-       // Format: SenderName.Code 
-       // We split by the LAST dot to separate Name from Matrix Code
        const lastDotIndex = rawHash.lastIndexOf('.');
-       
        let sender = "";
        let code = "";
 
@@ -121,88 +120,78 @@ const App: React.FC = () => {
           
           if (decoded) {
               setInitialData(decoded);
-              
-              // 1. Set Theme Immediately
-              const theme = THEMES.find(t => t.id === decoded.themeId) || THEMES[0];
-              setActiveTheme(theme);
+              setActiveTheme(THEMES.find(t => t.id === decoded.themeId) || THEMES[0]);
+              setViewMode('receiver'); // SHOW RECEIVER VIEW
           }
        }
     }
   }, []);
 
-  // SCROLL LOGIC: Smart scrolling depending on device
-  useEffect(() => {
-    if (initialData) {
-        const scrollToTarget = () => {
-            const isMobile = window.innerWidth < 1024;
-            const cardPreview = document.getElementById('card-preview');
-            const builderSection = document.getElementById('builder');
-            
-            if (isMobile && cardPreview) {
-                 // On mobile, the card is at the bottom. Scroll to center it in viewport so users see the gift immediately.
-                 cardPreview.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            } else if (builderSection) {
-                 // On desktop, align the section top. The card is visible in the right column.
-                 builderSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
-            }
-        };
-
-        // Trigger sequence to ensure scroll happens after layout settles
-        const t0 = setTimeout(scrollToTarget, 100);
-        const t1 = setTimeout(scrollToTarget, 500);
-        const t2 = setTimeout(scrollToTarget, 1000);
-        
-        return () => {
-            clearTimeout(t0);
-            clearTimeout(t1);
-            clearTimeout(t2);
-        };
-    }
-  }, [initialData]);
-
   const t = translations[lang];
 
   return (
-    <div className={`min-h-screen bg-gradient-to-b ${activeTheme.gradient} text-white transition-all duration-1000`}>
-      <Hero t={t.hero} lang={lang} setLang={setLang} />
-      
-      <EidCountdown t={t.countdown} lang={lang} />
+    <div className={`min-h-screen bg-gradient-to-b ${activeTheme.gradient} text-white transition-all duration-1000 overflow-x-hidden`}>
+      <AnimatePresence mode="wait">
+        {viewMode === 'receiver' && initialData ? (
+           <motion.div 
+             key="receiver"
+             initial={{ opacity: 0 }}
+             animate={{ opacity: 1 }}
+             exit={{ opacity: 0 }}
+             className="fixed inset-0 z-[100] overflow-y-auto"
+           >
+              <ReceiverView 
+                data={initialData} 
+                t={t.receiver} 
+                lang={lang} 
+                onCreateNew={() => {
+                   setInitialData(null);
+                   setViewMode('builder');
+                   window.history.pushState(null, "", window.location.pathname); // Clear hash
+                }}
+              />
+           </motion.div>
+        ) : (
+           <motion.div key="main-app" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+              <Hero t={t.hero} lang={lang} setLang={setLang} />
+              
+              <EidCountdown t={t.countdown} lang={lang} />
 
-      {/* Primary Ad Placement */}
-      <div className="max-w-7xl mx-auto px-6">
-         <DisplayAdUnit size="large" />
-      </div>
+              <div className="max-w-7xl mx-auto px-6">
+                 <DisplayAdUnit size="large" />
+              </div>
 
-      <section id="builder" className="py-24 px-6 min-h-screen relative z-10">
-        <div className="max-w-7xl mx-auto">
-          <motion.div 
-            initial={{ opacity: 0, y: 50 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            className="text-center mb-20"
-          >
-            <h2 className={`text-5xl md:text-7xl font-black mb-6 tracking-tighter ${lang === 'ur' ? 'leading-[1.4]' : lang === 'hi' ? 'font-hindi leading-[1.4]' : ''}`}>
-               {t.builder.title}
-            </h2>
-            <p className="text-gray-400 max-w-2xl mx-auto text-lg md:text-xl font-medium italic">
-               {initialData ? "Edit this card to make it yours, or share it as is." : t.builder.subtitle}
-            </p>
-          </motion.div>
-          
-          <CardBuilder 
-            onThemeChange={setActiveTheme} 
-            activeTheme={activeTheme}
-            t={t}
-            lang={lang}
-            setLang={setLang}
-            initialData={initialData}
-          />
-        </div>
-      </section>
+              <section id="builder" className="py-24 px-6 min-h-screen relative z-10">
+                <div className="max-w-7xl mx-auto">
+                  <motion.div 
+                    initial={{ opacity: 0, y: 50 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    className="text-center mb-20"
+                  >
+                    <h2 className={`text-5xl md:text-7xl font-black mb-6 tracking-tighter ${lang === 'ur' ? 'leading-[1.4]' : lang === 'hi' ? 'font-hindi leading-[1.4]' : ''}`}>
+                       {t.builder.title}
+                    </h2>
+                    <p className="text-gray-400 max-w-2xl mx-auto text-lg md:text-xl font-medium italic">
+                       {initialData ? "Edit this card to make it yours, or share it as is." : t.builder.subtitle}
+                    </p>
+                  </motion.div>
+                  
+                  <CardBuilder 
+                    onThemeChange={setActiveTheme} 
+                    activeTheme={activeTheme}
+                    t={t}
+                    lang={lang}
+                    setLang={setLang}
+                    initialData={initialData} // Pass even if null, builder handles it
+                  />
+                </div>
+              </section>
 
-      {/* NEW: Festive 3D PNG Marquee Strip */}
-      <FestiveStrip />
-
-      <Footer />
+              <FestiveStrip />
+              <Footer />
+           </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };
