@@ -174,28 +174,54 @@ const CardBuilder: React.FC<Props> = ({ onThemeChange, activeTheme, t, lang, set
                     card.style.border = 'none'; 
                     
                     // 2. HIGH-FIDELITY GRADIENT MAPPING
-                    // Map Tailwind gradients to exact CSS linear-gradients
                     const gradientMap: Record<string, string> = {
                         'crescent-dream': 'linear-gradient(135deg, #0a0515 0%, #1a0a3d 50%, #0d1f3f 100%)',
                         'lantern-glow': 'linear-gradient(135deg, #150a05 0%, #2d1b0d 50%, #3f1f0d 100%)',
                         'peaceful-garden': 'linear-gradient(135deg, #05150a 0%, #0a3d1a 50%, #0d3f1f 100%)',
                         'royal-purple': 'linear-gradient(135deg, #150515 0%, #3d0a3d 50%, #3f0d3f 100%)',
                     };
-                    
                     card.style.background = gradientMap[activeTheme.id] || `linear-gradient(135deg, ${activeTheme.primary}, ${activeTheme.secondary})`; 
                 }
 
-                // 3. FIX GOLD TEXT (REPLACE GRADIENT WITH SOLID + SHADOW)
+                // --- CRITICAL FIX: REMOVE INTERFERING 3D ELEMENTS ---
+                // We strictly REMOVE the Canon, Gift, Beads, and Stars from the export.
+                // This solves the alignment/collision issue completely.
+                // We keep ONLY the top-right Lantern and top-left Moon for framing.
+                const interferingSelectors = [
+                    '.floating-canon', 
+                    '.floating-gift', 
+                    '.floating-beads', 
+                    '.floating-star'
+                ];
+                
+                interferingSelectors.forEach(selector => {
+                    const el = clonedDoc.querySelector(selector) as HTMLElement;
+                    if (el) {
+                        el.style.display = 'none'; // HARD REMOVE for image export
+                    }
+                });
+
+                // --- PRESERVE FRAMING ELEMENTS ---
+                // Ensure the Lantern (Top Right) stays visible but safely positioned
+                const lantern = clonedDoc.querySelector('.floating-lantern') as HTMLElement;
+                if (lantern) {
+                    lantern.style.top = '-10px';
+                    lantern.style.right = '-10px';
+                    lantern.style.transform = 'scale(1.0)'; // Reset any 3D scaling
+                    lantern.style.opacity = '1';
+                }
+
+                // 3. FIX GOLD TEXT
                 const gradients = clonedDoc.querySelectorAll('.bg-clip-text');
                 gradients.forEach((el: any) => {
                     el.style.webkitBackgroundClip = 'initial'; 
                     el.style.backgroundClip = 'initial';
                     el.style.backgroundImage = 'none';
-                    el.style.color = '#FFD700'; // Solid Gold
+                    el.style.color = '#FFD700';
                     el.style.textShadow = '0 2px 10px rgba(0,0,0,0.5)';
                 });
 
-                // 4. FIX "RAMZAN MUBARAK" (ARABIC)
+                // 4. FIX "RAMZAN MUBARAK"
                 const greeting = clonedDoc.querySelector('.download-arabic-greeting') as HTMLElement;
                 if (greeting) {
                     greeting.style.color = '#FFD700';
@@ -208,40 +234,18 @@ const CardBuilder: React.FC<Props> = ({ onThemeChange, activeTheme, t, lang, set
                 if (youText) { 
                     youText.style.color = '#FCD34D'; 
                     youText.style.textShadow = '0 0 25px rgba(253, 224, 71, 0.6), 0 2px 4px rgba(0,0,0,0.8)';
-                    youText.style.transform = 'scale(1.1)'; 
                 }
 
-                // 6. SCALE UP 3D ELEMENTS
-                const floatingElements = clonedDoc.querySelectorAll('.card-floating-3d');
-                floatingElements.forEach((el) => {
-                    const hEl = el as HTMLElement;
-                    hEl.style.transform = 'scale(1.2)'; 
-                    hEl.style.filter = 'drop-shadow(0 15px 25px rgba(0,0,0,0.5))'; 
-                    hEl.style.opacity = '1';
-                });
-
-                // 7. LAYOUT ENGINE: PREVENT OVERLAPS
-                // Move Sender Name UP to clear the corner decorations
+                // 6. LAYOUT ENGINE: ENSURE SENDER NAME IS VISIBLE
+                // Since we removed the bottom assets, we can just center the name nicely
                 const senderContainer = clonedDoc.querySelector('.download-sender-container') as HTMLElement;
                 if (senderContainer) {
-                    senderContainer.style.transform = 'translateY(-40px)'; // Lift UP by 40px
+                    senderContainer.style.transform = 'translateY(-20px)';
                     senderContainer.style.position = 'relative';
                     senderContainer.style.zIndex = '50';
                 }
 
-                // Push Beads DOWN/OUT to clear the text
-                const beads = clonedDoc.querySelector('.floating-beads') as HTMLElement;
-                if (beads) {
-                    beads.style.transform = 'scale(0.8) translate(30px, 30px)'; // Shrink and move away
-                }
-
-                // Push Canon OUT
-                const canon = clonedDoc.querySelector('.floating-canon') as HTMLElement;
-                if (canon) {
-                    canon.style.transform = 'scale(0.9) translate(20px, 20px)';
-                }
-
-                // 8. BRANDING
+                // 7. BRANDING
                 const watermark = clonedDoc.createElement('div');
                 watermark.className = 'absolute bottom-2 left-0 w-full text-center pointer-events-none';
                 watermark.innerHTML = `<span style="color: rgba(255,255,255,0.3); font-size: 9px; text-transform: uppercase; letter-spacing: 3px; font-weight: bold; font-family: sans-serif; text-shadow: 0 1px 2px rgba(0,0,0,0.8);">NoorCard • Ramzan 2026</span>`;
