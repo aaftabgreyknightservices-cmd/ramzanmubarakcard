@@ -1,12 +1,13 @@
 
 import React from 'react';
+import { cld } from '../utils/images';
 
 const Footer: React.FC = () => {
   return (
     <footer className="py-12 px-4 border-t border-white/10 relative overflow-hidden">
-      {/* Footer 3D Decor */}
-      <img src="https://res.cloudinary.com/dxw5mimqj/image/upload/v1770240123/Kaaba_gay44v.png" className="absolute bottom-0 left-[-20px] md:left-10 w-24 md:w-32 opacity-80" alt="Kaaba" />
-      <img src="https://res.cloudinary.com/dxw5mimqj/image/upload/v1770239783/Mosque_Tower_f4wmqf.png" className="absolute bottom-0 right-[-10px] md:right-10 w-16 md:w-24 opacity-80" alt="Tower" />
+      {/* Footer 3D Decor - Optimized */}
+      <img src={cld("https://res.cloudinary.com/dxw5mimqj/image/upload/v1770240123/Kaaba_gay44v.png", 300)} className="absolute bottom-0 left-[-20px] md:left-10 w-24 md:w-32 opacity-80" alt="Kaaba" loading="lazy" />
+      <img src={cld("https://res.cloudinary.com/dxw5mimqj/image/upload/v1770239783/Mosque_Tower_f4wmqf.png", 200)} className="absolute bottom-0 right-[-10px] md:right-10 w-16 md:w-24 opacity-80" alt="Tower" loading="lazy" />
 
       <div className="max-w-6xl mx-auto flex flex-col md:flex-row justify-between items-center gap-8 relative z-10">
         <div className="flex flex-col items-center md:items-start gap-2">

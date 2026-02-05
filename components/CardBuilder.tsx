@@ -6,6 +6,7 @@ import html2canvas from 'html2canvas';
 import { CardData, CardTheme, THEMES, compressData, normalize } from '../types';
 import { Language } from '../translations';
 import { NativeAdUnit, DisplayAdUnit } from './AdUnits';
+import { cld } from '../utils/images';
 
 interface Props {
   onThemeChange: (theme: CardTheme) => void;
@@ -155,6 +156,9 @@ const CardBuilder: React.FC<Props> = ({ onThemeChange, activeTheme, t, lang, set
             if (youText) { youText.style.backgroundImage = 'none'; youText.style.webkitBackgroundClip = 'initial'; youText.style.color = '#FFD700'; }
             const noiseLayer = clonedDoc.querySelector('.download-noise-overlay') as HTMLElement;
             if (noiseLayer) { noiseLayer.style.backgroundImage = 'none'; noiseLayer.style.background = 'radial-gradient(circle, rgba(255,255,255,0.05) 0%, transparent 80%)'; }
+            // Hide 3D floating elements during export as they might glitch in 2D capture
+            const floatingElements = clonedDoc.querySelectorAll('.card-floating-3d');
+            floatingElements.forEach(el => (el as HTMLElement).style.display = 'none');
           }
         });
         const link = document.createElement('a'); link.download = `NoorCard-${formData.from || 'Ramzan'}.png`; link.href = canvas.toDataURL('image/png', 1.0); link.click();
@@ -167,52 +171,85 @@ const CardBuilder: React.FC<Props> = ({ onThemeChange, activeTheme, t, lang, set
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-16 items-start relative">
       
-      {/* --- DECORATIVE 3D FLOATING ASSETS --- */}
+      {/* --- DECORATIVE 3D FLOATING ASSETS (BACKGROUND) --- */}
       <motion.img 
-         src="https://res.cloudinary.com/dxw5mimqj/image/upload/v1770240014/Holy_Quran_mlxxbw.png" 
-         className="absolute -top-10 -left-10 w-24 md:w-32 lg:w-40 z-10 hidden md:block"
+         src={cld("https://res.cloudinary.com/dxw5mimqj/image/upload/v1770240014/Holy_Quran_mlxxbw.png", 300)} 
+         className="absolute -top-10 -left-10 w-24 md:w-32 lg:w-40 z-10 hidden md:block pointer-events-none"
          animate={{ y: [0, 15, 0], rotate: [0, 5, 0] }}
          transition={{ duration: 6, repeat: Infinity, ease: "easeInOut" }}
          alt="Quran"
+         loading="lazy"
       />
       <motion.img 
-         src="https://res.cloudinary.com/dxw5mimqj/image/upload/v1770240229/Date_Bowl_idoutb.png" 
-         className="absolute -bottom-20 -left-10 w-28 md:w-36 lg:w-48 z-10 hidden md:block"
+         src={cld("https://res.cloudinary.com/dxw5mimqj/image/upload/v1770240229/Date_Bowl_idoutb.png", 300)} 
+         className="absolute -bottom-20 -left-10 w-28 md:w-36 lg:w-48 z-10 hidden md:block pointer-events-none"
          animate={{ y: [0, -10, 0] }}
          transition={{ duration: 5, repeat: Infinity, ease: "easeInOut", delay: 1 }}
          alt="Dates"
+         loading="lazy"
       />
       
       {/* 3D Calligraphy Watermarks */}
-      <img src="https://res.cloudinary.com/dxw5mimqj/image/upload/v1770240241/Allah_Calligraphy_f184t1.png" className="absolute top-0 right-1/4 w-32 opacity-10 pointer-events-none" />
-      <img src="https://res.cloudinary.com/dxw5mimqj/image/upload/v1770240086/Muhammad_Calligraphy_i8a229.png" className="absolute bottom-1/4 left-10 w-32 opacity-10 pointer-events-none" />
+      <img src={cld("https://res.cloudinary.com/dxw5mimqj/image/upload/v1770240241/Allah_Calligraphy_f184t1.png", 300)} className="absolute top-0 right-1/4 w-32 opacity-10 pointer-events-none" loading="lazy" />
+      <img src={cld("https://res.cloudinary.com/dxw5mimqj/image/upload/v1770240086/Muhammad_Calligraphy_i8a229.png", 300)} className="absolute bottom-1/4 left-10 w-32 opacity-10 pointer-events-none" loading="lazy" />
+
+      {/* NEW: Kaaba Silhouette (Background Deep) */}
+      <motion.img 
+         src={cld("https://res.cloudinary.com/dxw5mimqj/image/upload/v1770240123/Kaaba_gay44v.png", 400)}
+         className="absolute top-20 right-0 w-40 md:w-56 z-0 opacity-20 hidden lg:block pointer-events-none blur-[1px]"
+         animate={{ y: [0, -5, 0] }}
+         transition={{ duration: 8, repeat: Infinity }}
+         alt="Kaaba"
+      />
+      
+      {/* NEW: Ramadan Drum (Background) */}
+      <motion.img 
+         src={cld("https://res.cloudinary.com/dxw5mimqj/image/upload/v1770239651/Ramadan_Drum_tnrvgo.png", 300)}
+         className="absolute bottom-40 right-[-40px] w-28 md:w-36 opacity-60 hidden lg:block pointer-events-none"
+         animate={{ rotate: [0, 10, -5, 0], y: [0, 10, 0] }}
+         transition={{ duration: 6, repeat: Infinity }}
+         alt="Drum"
+      />
+
+       {/* NEW: Alarm (Top Left Background) */}
+      <motion.img 
+         src={cld("https://res.cloudinary.com/dxw5mimqj/image/upload/v1770239956/Ramadan_Alarm_fk7euc.png", 200)}
+         className="absolute top-40 -left-16 w-24 z-0 opacity-50 hidden lg:block pointer-events-none"
+         animate={{ rotate: [0, -10, 5, 0] }}
+         transition={{ duration: 7, repeat: Infinity }}
+         alt="Alarm"
+      />
 
       <motion.img 
-         src="https://res.cloudinary.com/dxw5mimqj/image/upload/v1770239717/Ramadan_Drink_r2e8vp.png"
-         className="absolute -bottom-16 left-28 w-20 md:w-28 z-10 hidden md:block"
+         src={cld("https://res.cloudinary.com/dxw5mimqj/image/upload/v1770239717/Ramadan_Drink_r2e8vp.png", 200)}
+         className="absolute -bottom-16 left-28 w-20 md:w-28 z-10 hidden md:block pointer-events-none"
          animate={{ y: [0, -5, 0] }}
          transition={{ duration: 4, repeat: Infinity, ease: "easeInOut", delay: 1.5 }}
          alt="Drink"
+         loading="lazy"
       />
       <motion.img 
-         src="https://res.cloudinary.com/dxw5mimqj/image/upload/v1770239958/Prayer_Mat_rplurv.png"
-         className="absolute bottom-[-150px] -right-20 w-64 opacity-50 z-0 hidden lg:block rotate-12 filter blur-[1px]"
+         src={cld("https://res.cloudinary.com/dxw5mimqj/image/upload/v1770239958/Prayer_Mat_rplurv.png", 600)}
+         className="absolute bottom-[-150px] -right-20 w-64 opacity-50 z-0 hidden lg:block rotate-12 filter blur-[1px] pointer-events-none"
          alt="Mat"
+         loading="lazy"
       />
       <motion.img 
-         src="https://res.cloudinary.com/dxw5mimqj/image/upload/v1770240086/Ketupat_ambppx.png"
-         className="absolute -top-20 right-20 w-24 z-10 hidden md:block"
+         src={cld("https://res.cloudinary.com/dxw5mimqj/image/upload/v1770240086/Ketupat_ambppx.png", 200)}
+         className="absolute -top-20 right-20 w-24 z-10 hidden md:block pointer-events-none"
          animate={{ rotate: [0, 5, -5, 0], y: [0, 10, 0] }}
          transition={{ duration: 7, repeat: Infinity, ease: "easeInOut" }}
          alt="Ketupat"
+         loading="lazy"
       />
 
        <motion.img 
-         src="https://res.cloudinary.com/dxw5mimqj/image/upload/v1770239914/Prayer_Beads_csdzwt.png" 
-         className="absolute top-1/2 -right-10 w-20 md:w-28 opacity-60 z-0 hidden lg:block"
+         src={cld("https://res.cloudinary.com/dxw5mimqj/image/upload/v1770239914/Prayer_Beads_csdzwt.png", 200)} 
+         className="absolute top-1/2 -right-10 w-20 md:w-28 opacity-60 z-0 hidden lg:block pointer-events-none"
          animate={{ rotate: [0, 10, 0] }}
          transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }}
          alt="Beads"
+         loading="lazy"
       />
 
       <motion.div 
@@ -317,7 +354,7 @@ const CardBuilder: React.FC<Props> = ({ onThemeChange, activeTheme, t, lang, set
         <div className="relative">
             {/* Gift Box Decoration */}
             <motion.img 
-                src="https://res.cloudinary.com/dxw5mimqj/image/upload/v1770239653/Ramadan_Gift_wwyhcs.png"
+                src={cld("https://res.cloudinary.com/dxw5mimqj/image/upload/v1770239653/Ramadan_Gift_wwyhcs.png", 200)}
                 className="absolute -top-12 -right-8 w-16 md:w-20 z-30 pointer-events-none"
                 animate={{ rotate: [0, 5, -5, 0], scale: [1, 1.05, 1] }}
                 transition={{ duration: 4, repeat: Infinity }}
@@ -363,6 +400,69 @@ const CardBuilder: React.FC<Props> = ({ onThemeChange, activeTheme, t, lang, set
                 <motion.div style={{ background: sheenGradient }} className="absolute inset-0 z-50 pointer-events-none mix-blend-overlay"/>
                 <div className={`absolute inset-0 bg-gradient-to-br ${activeTheme.gradient} z-[-50]`}></div>
                 <div className="download-noise-overlay absolute inset-0 opacity-20 z-[-40] bg-[url('https://grainy-gradients.vercel.app/noise.svg')] mix-blend-overlay"></div>
+                
+                {/* --- MINIATURE 3D DECORATIONS ON CARD --- */}
+                <motion.img 
+                  src={cld("https://res.cloudinary.com/dxw5mimqj/image/upload/v1770239783/Ramadan_Lantern_xeufdp.png", 100)} 
+                  className="card-floating-3d absolute -top-4 -right-4 w-16 z-50 drop-shadow-[0_10px_10px_rgba(0,0,0,0.5)] pointer-events-none"
+                  style={{ translateZ: 120 }}
+                  animate={{ y: [0, 5, 0], rotate: [0, 5, 0] }}
+                  transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
+                />
+                 <motion.img 
+                  src={cld("https://res.cloudinary.com/dxw5mimqj/image/upload/v1770240236/Crescent_Moon_jmtxds.png", 100)} 
+                  className="card-floating-3d absolute -top-2 -left-2 w-12 z-40 drop-shadow-[0_5px_15px_rgba(255,215,0,0.3)] pointer-events-none opacity-80"
+                  style={{ translateZ: 80 }}
+                />
+                <motion.img 
+                  src={cld("https://res.cloudinary.com/dxw5mimqj/image/upload/v1770240311/Date_s7yyme.png", 80)} 
+                  className="card-floating-3d absolute bottom-8 -left-2 w-10 z-40 drop-shadow-md pointer-events-none blur-[0.5px]"
+                  style={{ translateZ: 100 }}
+                  animate={{ rotate: [0, 10, 0] }}
+                  transition={{ duration: 5, repeat: Infinity }}
+                />
+
+                {/* NEW: Miniature Canon (Bottom Right) */}
+                <motion.img 
+                  src={cld("https://res.cloudinary.com/dxw5mimqj/image/upload/v1770239698/Ramadan_Canon_uddqjs.png", 150)} 
+                  className="card-floating-3d absolute bottom-20 -right-2 w-16 z-30 drop-shadow-[0_10px_20px_rgba(0,0,0,0.5)] pointer-events-none"
+                  style={{ translateZ: 60 }}
+                  animate={{ rotate: [0, -5, 0] }}
+                  transition={{ duration: 6, repeat: Infinity, ease: "easeInOut" }}
+                />
+
+                {/* NEW: Miniature Gift (Bottom Left) */}
+                 <motion.img 
+                  src={cld("https://res.cloudinary.com/dxw5mimqj/image/upload/v1770239653/Ramadan_Gift_wwyhcs.png", 150)} 
+                  className="card-floating-3d absolute bottom-28 -left-2 w-12 z-30 drop-shadow-[0_5px_15px_rgba(0,0,0,0.4)] pointer-events-none"
+                  style={{ translateZ: 70 }}
+                  animate={{ y: [0, -5, 0] }}
+                  transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
+                />
+
+                 {/* REPOSITIONED: Star Cluster (Top Right - Balanced with Lantern) */}
+                 <motion.img 
+                  src={cld("https://res.cloudinary.com/dxw5mimqj/image/upload/v1770239609/Star_ga6mwm.png", 100)} 
+                  className="card-floating-3d absolute top-[18%] right-[12%] w-6 md:w-8 z-20 drop-shadow-[0_0_10px_rgba(255,215,0,0.6)] pointer-events-none"
+                  style={{ translateZ: 50 }}
+                  animate={{ scale: [1, 1.2, 1], opacity: [0.8, 1, 0.8], rotate: [0, 15, 0] }}
+                  transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
+                />
+                {/* Extra Tiny Star for Aesthetics */}
+                <motion.img 
+                  src={cld("https://res.cloudinary.com/dxw5mimqj/image/upload/v1770239609/Star_ga6mwm.png", 50)} 
+                  className="card-floating-3d absolute top-[23%] right-[8%] w-3 md:w-4 z-20 drop-shadow-[0_0_5px_rgba(255,215,0,0.8)] pointer-events-none"
+                  style={{ translateZ: 40 }}
+                  animate={{ scale: [1, 1.5, 1], opacity: [0.5, 1, 0.5] }}
+                  transition={{ duration: 2, repeat: Infinity, ease: "easeInOut", delay: 1 }}
+                />
+
+                 <motion.img 
+                  src={cld("https://res.cloudinary.com/dxw5mimqj/image/upload/v1770239914/Prayer_Beads_csdzwt.png", 100)} 
+                  className="card-floating-3d absolute -bottom-6 -right-6 w-24 opacity-60 z-10 pointer-events-none rotate-12"
+                  style={{ translateZ: 40 }}
+                />
+
                 <motion.div className="absolute inset-0 flex items-center justify-center z-0 pointer-events-none"><CalligraphySVG color={activeTheme.accent} /></motion.div>
                 <motion.div style={{ translateZ: 80 }} className="relative z-30 h-full flex flex-col justify-between items-center text-center transform-gpu">
                   <div className="space-y-4">

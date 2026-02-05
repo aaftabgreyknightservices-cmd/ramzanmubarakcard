@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Language } from '../translations';
+import { cld } from '../utils/images';
 
 const TARGET_DATE = new Date('2026-02-17T18:00:00').getTime();
 
@@ -39,7 +40,7 @@ const PrepCard = ({ img, title, desc, delay }: { img: string, title: string, des
     >
         <div className="flex items-center gap-4 relative z-10">
             <div className="w-12 h-12 flex-shrink-0">
-                <img src={img} className="w-full h-full object-contain drop-shadow-lg group-hover:scale-110 transition-transform duration-300" alt="icon" />
+                <img src={cld(img, 150)} className="w-full h-full object-contain drop-shadow-lg group-hover:scale-110 transition-transform duration-300" alt="icon" loading="lazy" />
             </div>
             <div>
                 <h4 className="font-bold text-white text-sm md:text-base mb-1">{title}</h4>
@@ -75,18 +76,20 @@ const EidCountdown: React.FC<Props> = ({ t, lang }) => {
   return (
     <section className="relative py-12 md:py-20 px-4 overflow-hidden border-b border-white/5 bg-black/20">
         
-        {/* Decorative Assets */}
+        {/* Decorative Assets - Optimized */}
         <motion.img 
-            src="https://res.cloudinary.com/dxw5mimqj/image/upload/v1770239956/Ramadan_Alarm_fk7euc.png"
+            src={cld("https://res.cloudinary.com/dxw5mimqj/image/upload/v1770239956/Ramadan_Alarm_fk7euc.png", 400)}
             className="absolute top-10 left-[-20px] md:left-10 w-24 md:w-32 opacity-80 z-0"
             animate={{ rotate: [0, 5, -5, 0] }}
             transition={{ duration: 5, repeat: Infinity, ease: 'easeInOut' }}
+            loading="lazy"
         />
         <motion.img 
-            src="https://res.cloudinary.com/dxw5mimqj/image/upload/v1770239651/Ramadan_Drum_tnrvgo.png"
+            src={cld("https://res.cloudinary.com/dxw5mimqj/image/upload/v1770239651/Ramadan_Drum_tnrvgo.png", 400)}
             className="absolute bottom-10 right-[-20px] md:right-10 w-28 md:w-40 opacity-80 z-0"
             animate={{ y: [0, -10, 0] }}
             transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut' }}
+            loading="lazy"
         />
 
         <div className="max-w-5xl mx-auto relative z-10">
@@ -96,7 +99,7 @@ const EidCountdown: React.FC<Props> = ({ t, lang }) => {
                 className="flex flex-col items-center justify-center gap-4 mb-10 text-center"
             >
                 <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-yellow-400/10 border border-yellow-400/20 text-yellow-400 text-[10px] md:text-xs font-bold uppercase tracking-widest shadow-[0_0_20px_rgba(255,209,102,0.1)]">
-                    <img src="https://res.cloudinary.com/dxw5mimqj/image/upload/v1770239649/Ramadan_Calendar_mktnio.png" className="w-4 h-4" />
+                    <img src={cld("https://res.cloudinary.com/dxw5mimqj/image/upload/v1770239649/Ramadan_Calendar_mktnio.png", 50)} className="w-4 h-4" loading="lazy" />
                     <span>{t.dates}</span>
                 </div>
                 

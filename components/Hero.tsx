@@ -3,6 +3,7 @@ import React, { useRef } from 'react';
 import { motion, useScroll, useTransform, AnimatePresence } from 'framer-motion';
 import { ChevronDown } from 'lucide-react';
 import { Language } from '../translations';
+import { cld } from '../utils/images';
 
 interface Props {
     t: any;
@@ -63,16 +64,18 @@ const Hero: React.FC<Props> = ({ t, lang, setLang }) => {
 
       {/* --- 3D ASSETS LAYERS --- */}
 
-      {/* Layer 0: Background Stars (Farthest) */}
+      {/* Layer 0: Background Stars (Farthest) - Lazy loaded, low priority */}
       <motion.div style={{ y: moonY }} className="absolute inset-0 z-0 pointer-events-none">
          <img 
-            src="https://res.cloudinary.com/dxw5mimqj/image/upload/v1770239609/Star_ga6mwm.png" 
+            src={cld("https://res.cloudinary.com/dxw5mimqj/image/upload/v1770239609/Star_ga6mwm.png", 50)} 
             className="absolute top-[15%] left-[10%] w-8 opacity-60 animate-pulse" 
+            loading="lazy"
             alt="" 
          />
          <img 
-            src="https://res.cloudinary.com/dxw5mimqj/image/upload/v1770239609/Star_ga6mwm.png" 
+            src={cld("https://res.cloudinary.com/dxw5mimqj/image/upload/v1770239609/Star_ga6mwm.png", 50)} 
             className="absolute top-[25%] right-[20%] w-6 opacity-40 animate-pulse delay-700" 
+            loading="lazy"
             alt="" 
          />
          <div className="absolute inset-0 opacity-60">
@@ -86,61 +89,66 @@ const Hero: React.FC<Props> = ({ t, lang, setLang }) => {
       {[...Array(3)].map((_, i) => (
          <motion.img
             key={`date-${i}`}
-            src="https://res.cloudinary.com/dxw5mimqj/image/upload/v1770240311/Date_s7yyme.png"
+            src={cld("https://res.cloudinary.com/dxw5mimqj/image/upload/v1770240311/Date_s7yyme.png", 100)}
             className="absolute w-6 md:w-10 z-0 opacity-40 blur-[1px]"
             initial={{ y: -100, x: Math.random() * 1000, rotate: 0 }}
             animate={{ y: 1000, rotate: 360 }}
             transition={{ duration: 15 + Math.random() * 10, repeat: Infinity, ease: "linear", delay: i * 5 }}
             style={{ left: `${Math.random() * 100}%` }}
+            loading="lazy"
          />
       ))}
 
-      {/* Layer 1: Huge Crescent Moon (Back) */}
+      {/* Layer 1: Huge Crescent Moon (Back) - EAGER LOAD */}
       <motion.div style={{ y: moonY, rotate: -10 }} className="absolute top-[-5%] right-[-10%] md:top-[5%] md:right-[5%] z-0 w-[60vw] md:w-[35vw] opacity-90 pointer-events-none mix-blend-screen">
           <img 
-            src="https://res.cloudinary.com/dxw5mimqj/image/upload/v1770240236/Crescent_Moon_jmtxds.png" 
+            src={cld("https://res.cloudinary.com/dxw5mimqj/image/upload/v1770240236/Crescent_Moon_jmtxds.png", 1000)} 
             className="w-full h-auto drop-shadow-[0_0_80px_rgba(255,215,0,0.3)]"
             alt="Moon"
+            fetchPriority="high"
           />
       </motion.div>
 
-      {/* Layer 2: Mosque Dome (Rising Midground) */}
+      {/* Layer 2: Mosque Dome (Rising Midground) - EAGER LOAD */}
       <motion.div style={{ y: domeY }} className="absolute bottom-[-5%] left-[20%] md:left-[30%] w-[60vw] md:w-[40vw] z-5 pointer-events-none opacity-50 blur-[2px] mix-blend-screen">
          <img 
-            src="https://res.cloudinary.com/dxw5mimqj/image/upload/v1770240232/Mosque_Dome_xrhjbk.png" 
+            src={cld("https://res.cloudinary.com/dxw5mimqj/image/upload/v1770240232/Mosque_Dome_xrhjbk.png", 800)} 
             className="w-full h-auto drop-shadow-[0_-10px_30px_rgba(255,255,255,0.1)]"
             alt="Dome"
          />
       </motion.div>
 
-      {/* Layer 3: Mosque Silhouette (Bottom Horizon) */}
+      {/* Layer 3: Mosque Silhouette (Bottom Horizon) - EAGER LOAD */}
       <motion.div style={{ y: mosqueY }} className="absolute bottom-[-10%] md:bottom-[-15%] left-0 w-full z-10 pointer-events-none">
          <img 
-            src="https://res.cloudinary.com/dxw5mimqj/image/upload/v1770239876/Mosque_s5ywia.png" 
+            src={cld("https://res.cloudinary.com/dxw5mimqj/image/upload/v1770239876/Mosque_s5ywia.png", 1200)} 
             className="w-full h-auto object-cover opacity-90 drop-shadow-[0_-20px_40px_rgba(0,0,0,0.8)]"
             alt="Mosque"
-         />
+            fetchPriority="high"
+          />
       </motion.div>
 
       {/* Layer 4: Date Tree (Foreground Left) */}
       <motion.div style={{ y: treeY }} className="absolute -bottom-20 -left-20 md:bottom-0 md:-left-10 w-[50vw] md:w-[25vw] z-30 pointer-events-none drop-shadow-[10px_0_20px_rgba(0,0,0,0.8)]">
           <img 
-            src="https://res.cloudinary.com/dxw5mimqj/image/upload/v1770240275/Date_Tree_uodk61.png"
+            src={cld("https://res.cloudinary.com/dxw5mimqj/image/upload/v1770240275/Date_Tree_uodk61.png", 800)}
             className="w-full h-auto opacity-90 filter brightness-50 contrast-125"
             alt="Date Tree"
+            loading="eager"
           />
       </motion.div>
 
       {/* Layer 5: Ramadan Canon (Foreground Right Bottom) */}
       <motion.div style={{ y: canonY }} className="absolute -bottom-10 -right-20 md:bottom-0 md:right-0 w-[40vw] md:w-[25vw] z-30 pointer-events-none">
           <img 
-            src="https://res.cloudinary.com/dxw5mimqj/image/upload/v1770239698/Ramadan_Canon_uddqjs.png"
+            src={cld("https://res.cloudinary.com/dxw5mimqj/image/upload/v1770239698/Ramadan_Canon_uddqjs.png", 600)}
             className="w-full h-auto filter brightness-75 drop-shadow-2xl"
             alt="Canon"
+            loading="lazy"
           />
       </motion.div>
 
-      {/* Layer 6: Floating Lanterns */}
+      {/* Layer 6: Floating Lanterns - Lazy Load */}
       <motion.div 
         style={{ y: lanternYFast }}
         animate={{ y: [0, 15, 0], rotate: [0, 2, 0] }}
@@ -148,9 +156,10 @@ const Hero: React.FC<Props> = ({ t, lang, setLang }) => {
         className="absolute top-[-5%] left-[5%] md:left-[10%] z-20 w-[20vw] md:w-[12vw] pointer-events-none"
       >
          <img 
-           src="https://res.cloudinary.com/dxw5mimqj/image/upload/v1770239783/Ramadan_Lantern_xeufdp.png" 
+           src={cld("https://res.cloudinary.com/dxw5mimqj/image/upload/v1770239783/Ramadan_Lantern_xeufdp.png", 400)} 
            className="w-full h-auto drop-shadow-[0_20px_40px_rgba(253,224,71,0.2)]"
            alt="Lantern"
+           loading="lazy"
          />
       </motion.div>
 
@@ -161,9 +170,10 @@ const Hero: React.FC<Props> = ({ t, lang, setLang }) => {
         className="absolute top-[10%] right-[80%] md:right-[15%] z-10 w-[12vw] md:w-[8vw] pointer-events-none blur-[1px]"
       >
          <img 
-           src="https://res.cloudinary.com/dxw5mimqj/image/upload/v1770239783/Ramadan_Lantern_xeufdp.png" 
+           src={cld("https://res.cloudinary.com/dxw5mimqj/image/upload/v1770239783/Ramadan_Lantern_xeufdp.png", 300)} 
            className="w-full h-auto opacity-80"
            alt="Lantern"
+           loading="lazy"
          />
       </motion.div>
 
@@ -197,7 +207,7 @@ const Hero: React.FC<Props> = ({ t, lang, setLang }) => {
               className="group relative w-full sm:w-auto px-8 md:px-10 py-4 md:py-5 bg-gradient-to-r from-yellow-400 to-amber-500 text-black font-bold rounded-full text-lg md:text-xl shadow-[0_0_50px_rgba(255,209,102,0.5)] hover:shadow-[0_0_80px_rgba(255,209,102,0.8)] hover:scale-105 active:scale-95 transition-all duration-300 overflow-hidden"
             >
               <span className="relative z-10 flex items-center justify-center gap-2">
-                  <img src="https://res.cloudinary.com/dxw5mimqj/image/upload/v1770239609/Star_ga6mwm.png" className="w-5 h-5 animate-spin-slow" />
+                  <img src={cld("https://res.cloudinary.com/dxw5mimqj/image/upload/v1770239609/Star_ga6mwm.png", 50)} className="w-5 h-5 animate-spin-slow" />
                   {t.cta}
               </span>
               <motion.div 

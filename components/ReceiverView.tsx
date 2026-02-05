@@ -6,6 +6,7 @@ import confetti from 'canvas-confetti';
 import { CardData, THEMES, BLESSINGS } from '../types';
 import { Language } from '../translations';
 import { NativeAdUnit, DisplayAdUnit, SmartLinkButton } from './AdUnits';
+import { cld } from '../utils/images';
 
 interface Props {
   data: CardData;
@@ -53,9 +54,10 @@ const GoldenEnvelope = ({ from, onClick, isOpening, t }: { from: string, onClick
         
         {/* Envelope Decor */}
         <img 
-            src="https://res.cloudinary.com/dxw5mimqj/image/upload/v1770239783/Ramadan_Lantern_xeufdp.png" 
+            src={cld("https://res.cloudinary.com/dxw5mimqj/image/upload/v1770239783/Ramadan_Lantern_xeufdp.png", 100)} 
             className="absolute -right-4 top-10 w-12 opacity-80"
             alt="lantern"
+            loading="lazy"
         />
       </motion.div>
       {!isOpening && (
