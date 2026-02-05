@@ -6,11 +6,5 @@ export default defineConfig({
   plugins: [react()],
   build: {
     outDir: 'dist',
-  },
-  server: {
-    // Critical for running in Cloud IDEs (Project IDX, Codespaces, etc.)
-    host: '0.0.0.0',
-    port: 3000,
-    strictPort: false, // Allow fallback if port is busy
   }
 });

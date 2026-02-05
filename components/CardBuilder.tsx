@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence, useMotionValue, useSpring, useTransform, useMotionTemplate } from 'framer-motion';
-import { Share2, Download, Copy, Check, Sparkles, RefreshCw, Send, Heart, ChevronLeft, ChevronRight, Shuffle, PenTool } from 'lucide-react';
+import { Share2, Download, Copy, Check, Sparkles, RefreshCw, Send, Heart, ChevronLeft, ChevronRight, Shuffle, PenTool, Wand2 } from 'lucide-react';
 import html2canvas from 'html2canvas';
 import { CardData, CardTheme, THEMES, compressData, normalize } from '../types';
 import { Language } from '../translations';
@@ -185,6 +185,8 @@ const CardBuilder: React.FC<Props> = ({ onThemeChange, activeTheme, t, lang, set
 
                 // --- CRITICAL FIX: REMOVE INTERFERING 3D ELEMENTS ---
                 // We strictly REMOVE the Canon, Gift, Beads, and Stars from the export.
+                // This solves the alignment/collision issue completely.
+                // We keep ONLY the top-right Lantern and top-left Moon for framing.
                 const interferingSelectors = [
                     '.floating-canon', 
                     '.floating-gift', 
@@ -588,7 +590,7 @@ const CardBuilder: React.FC<Props> = ({ onThemeChange, activeTheme, t, lang, set
             <span>Tilt device to experience 3D depth</span>
           </div>
           <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} onClick={() => { const builderSection = document.getElementById('builder'); if (builderSection) builderSection.scrollIntoView({ behavior: 'smooth', block: 'start' }); }} className="group relative px-8 py-4 bg-yellow-400 text-black font-black rounded-full shadow-[0_0_30px_rgba(255,209,102,0.4)] flex items-center gap-3 uppercase tracking-widest text-sm hover:shadow-[0_0_50px_rgba(255,209,102,0.6)] transition-all overflow-hidden">
-             <span className="relative z-10 flex items-center gap-2"><Sparkles size={18} />{t.hero?.cta || "Create Your Wish Card"}</span>
+             <span className="relative z-10 flex items-center gap-2"><Wand2 size={18} />{t.hero?.cta || "Create Your Wish Card"}</span>
              <motion.div className="absolute inset-0 bg-white/30 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-500" />
           </motion.button>
         </div>
