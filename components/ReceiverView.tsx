@@ -3,8 +3,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence, useMotionValue, useSpring, useTransform } from 'framer-motion';
 import { PenTool, Check, Volume2, VolumeX, Lock, Moon } from 'lucide-react';
 import confetti from 'canvas-confetti';
-import { CardData, THEMES, BLESSINGS } from '../types';
-import { Language } from '../translations';
+import { CardData, THEMES } from '../types';
+import { Language, translations } from '../translations';
 import { NativeAdUnit, DisplayAdUnit, SmartLinkButton } from './AdUnits';
 import { cld } from '../utils/images';
 
@@ -222,7 +222,7 @@ const ReceiverView: React.FC<Props> = ({ data, onCreateNew, t, lang }) => {
                            <div className="pt-6 border-t border-white/10 relative">
                               <p className="text-[10px] md:text-xs text-[#FCD34D] font-black uppercase tracking-[0.5em] mb-4">Blessings</p>
                               <p className="text-base md:text-lg text-[#FEF3C7] leading-relaxed italic font-['Playfair_Display'] font-semibold drop-shadow-[0_0_15px_rgba(255,209,102,0.3)]">
-                                  "{BLESSINGS[data.blessingIndex || 0]}"
+                                  "{translations[lang].blessings[data.blessingIndex || 0]}"
                               </p>
                            </div>
                         )}

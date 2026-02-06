@@ -57,7 +57,6 @@ const CardBuilder: React.FC<Props> = ({ onThemeChange, activeTheme, t, lang, set
   // --- VIRALITY LOCK LOGIC ---
   const REQUIRED_SHARES = 3;
   const [shareCount, setShareCount] = useState(() => {
-     // Persist progress to localStorage so refresh doesn't reset it
      if (typeof window !== 'undefined') {
          return parseInt(localStorage.getItem('noor_shares') || '0');
      }
@@ -70,15 +69,8 @@ const CardBuilder: React.FC<Props> = ({ onThemeChange, activeTheme, t, lang, set
          const newCount = shareCount + 1;
          setShareCount(newCount);
          localStorage.setItem('noor_shares', newCount.toString());
-         
          if (newCount === REQUIRED_SHARES) {
-             // UNLOCK CELEBRATION
-             confetti({
-                 particleCount: 150,
-                 spread: 70,
-                 origin: { y: 0.8 },
-                 colors: ['#FFD700', '#FFA500', '#FFFFFF']
-             });
+             confetti({ particleCount: 150, spread: 70, origin: { y: 0.8 }, colors: ['#FFD700', '#FFA500', '#FFFFFF'] });
              if (navigator.vibrate) navigator.vibrate([100, 50, 100]);
          }
      }
@@ -194,7 +186,6 @@ const CardBuilder: React.FC<Props> = ({ onThemeChange, activeTheme, t, lang, set
 
   const downloadImage = async () => {
     if (!cardRef.current) return;
-    
     const wasHovered = isHovered;
     mouseX.set(0); 
     mouseY.set(0);
@@ -212,12 +203,10 @@ const CardBuilder: React.FC<Props> = ({ onThemeChange, activeTheme, t, lang, set
             logging: false,
             onclone: (clonedDoc) => {
                 const card = clonedDoc.querySelector('.group\\/card') as HTMLElement;
-                
                 if (card) {
                     card.style.transform = 'none';
                     card.style.boxShadow = 'none'; 
                     card.style.border = 'none'; 
-                    
                     const gradientMap: Record<string, string> = {
                         'crescent-dream': 'linear-gradient(135deg, #0a0515 0%, #1a0a3d 50%, #0d1f3f 100%)',
                         'lantern-glow': 'linear-gradient(135deg, #150a05 0%, #2d1b0d 50%, #3f1f0d 100%)',
@@ -226,13 +215,11 @@ const CardBuilder: React.FC<Props> = ({ onThemeChange, activeTheme, t, lang, set
                     };
                     card.style.background = gradientMap[activeTheme.id] || `linear-gradient(135deg, ${activeTheme.primary}, ${activeTheme.secondary})`; 
                 }
-
                 const interferingSelectors = ['.floating-canon', '.floating-gift', '.floating-beads', '.floating-star'];
                 interferingSelectors.forEach(selector => {
                     const el = clonedDoc.querySelector(selector) as HTMLElement;
                     if (el) el.style.display = 'none';
                 });
-
                 const lantern = clonedDoc.querySelector('.floating-lantern') as HTMLElement;
                 if (lantern) {
                     lantern.style.top = '-10px';
@@ -240,7 +227,6 @@ const CardBuilder: React.FC<Props> = ({ onThemeChange, activeTheme, t, lang, set
                     lantern.style.transform = 'scale(1.0)'; 
                     lantern.style.opacity = '1';
                 }
-
                 const gradients = clonedDoc.querySelectorAll('.bg-clip-text');
                 gradients.forEach((el: any) => {
                     el.style.webkitBackgroundClip = 'initial'; 
@@ -249,27 +235,23 @@ const CardBuilder: React.FC<Props> = ({ onThemeChange, activeTheme, t, lang, set
                     el.style.color = '#FFD700';
                     el.style.textShadow = '0 2px 10px rgba(0,0,0,0.5)';
                 });
-
                 const greeting = clonedDoc.querySelector('.download-arabic-greeting') as HTMLElement;
                 if (greeting) {
                     greeting.style.color = '#FFD700';
                     greeting.style.textShadow = '0 2px 15px rgba(0,0,0,0.5), 0 0 5px rgba(255,215,0,0.3)';
                     greeting.style.opacity = '1';
                 }
-
                 const youText = clonedDoc.querySelector('.download-target-you') as HTMLElement;
                 if (youText) { 
                     youText.style.color = '#FCD34D'; 
                     youText.style.textShadow = '0 0 25px rgba(253, 224, 71, 0.6), 0 2px 4px rgba(0,0,0,0.8)';
                 }
-
                 const senderContainer = clonedDoc.querySelector('.download-sender-container') as HTMLElement;
                 if (senderContainer) {
                     senderContainer.style.transform = 'translateY(-20px)';
                     senderContainer.style.position = 'relative';
                     senderContainer.style.zIndex = '50';
                 }
-
                 const watermark = clonedDoc.createElement('div');
                 watermark.className = 'absolute bottom-2 left-0 w-full text-center pointer-events-none';
                 watermark.innerHTML = `<span style="color: rgba(255,255,255,0.3); font-size: 9px; text-transform: uppercase; letter-spacing: 3px; font-weight: bold; font-family: sans-serif; text-shadow: 0 1px 2px rgba(0,0,0,0.8);">NoorCard • Ramzan 2026</span>`;
