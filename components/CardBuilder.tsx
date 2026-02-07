@@ -269,7 +269,7 @@ const CardBuilder: React.FC<Props> = ({ onThemeChange, activeTheme, t, lang, set
     }
   };
 
-  const languages: { code: Language; label: string }[] = [ { code: 'en', label: 'English' }, { code: 'ru', label: 'Roman' }, { code: 'hi', label: 'हिंदी' }, { code: 'ur', label: 'اردو' }, { code: 'ar', label: 'العربية' } ];
+  const languages: { code: Language; label: string }[] = [ { code: 'en', label: 'English' }, { code: 'ru', label: 'Urdu' }, { code: 'hi', label: 'हिंदी' }, { code: 'ur', label: 'اردو' }, { code: 'ar', label: 'العربية' } ];
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-16 items-start relative">
